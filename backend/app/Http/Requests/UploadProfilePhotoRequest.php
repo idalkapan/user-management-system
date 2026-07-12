@@ -32,4 +32,17 @@ class UploadProfilePhotoRequest extends FormRequest
             
         ];
     }
+    /**
+     * Get the custom validation messages.
+     */
+    public function messages(): array
+    {
+        return [
+            'photo.required' => 'Profil fotoğrafı seçmeniz gerekmektedir.',
+            'photo.image' => 'Yüklenen dosya geçerli bir görsel olmalıdır.',
+            'photo.mimes' => 'Profil fotoğrafı JPG, JPEG veya PNG formatında olmalıdır.',
+            'photo.max' => 'Profil fotoğrafının boyutu en fazla 2 MB olabilir.',
+        ];
+    }
+
 }

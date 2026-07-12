@@ -33,4 +33,22 @@ class UpdateProfileRequest extends FormRequest
             'password' => 'prohibited',
             ];
     }
+    /**
+     * Get the custom validation messages.
+     */
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Ad soyad alanı zorunludur.',
+            'name.string' => 'Ad soyad geçerli bir metin olmalıdır.',
+            'name.max' => 'Ad soyad en fazla 255 karakter olabilir.',
+            
+            'email.required' => 'E-posta alanı zorunludur.',
+            'email.email' => 'Geçerli bir e-posta adresi giriniz.',
+            'email.unique' => 'Bu e-posta adresi zaten kullanılmaktadır.',
+            
+            'password.prohibited' => 'Şifre bu işlem üzerinden değiştirilemez.',
+            ];
+    }
+    
 }

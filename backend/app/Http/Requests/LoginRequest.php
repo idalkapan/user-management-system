@@ -26,4 +26,14 @@ class LoginRequest extends FormRequest
             'password' => 'required|string',
             ];
     }
+    public function messages(): array
+    {
+        return [
+            'email.required' => 'E-posta alanı zorunludur.',
+            'email.email' => 'Geçerli bir e-posta adresi giriniz.',
+
+            'password.required' => 'Şifre alanı zorunludur.',
+            'password.string' => 'Şifre geçerli bir metin olmalıdır.',
+        ];
+    }
 }

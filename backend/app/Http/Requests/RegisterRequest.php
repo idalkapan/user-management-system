@@ -28,4 +28,24 @@ class RegisterRequest extends FormRequest
             'password' => 'required|min:8|confirmed',
         ];
     }
+
+    /**
+     * Get the custom validation messages.
+     */
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Ad soyad alanı zorunludur.',
+            'name.string' => 'Ad soyad geçerli bir metin olmalıdır.',
+            'name.max' => 'Ad soyad en fazla 255 karakter olabilir.',
+
+            'email.required' => 'E-posta alanı zorunludur.',
+            'email.email' => 'Geçerli bir e-posta adresi giriniz.',
+            'email.unique' => 'Bu e-posta adresi zaten kayıtlıdır.',
+
+            'password.required' => 'Şifre alanı zorunludur.',
+            'password.min' => 'Şifre en az 8 karakter olmalıdır.',
+            'password.confirmed' => 'Şifreler eşleşmiyor.',
+        ];
+    }
 }
