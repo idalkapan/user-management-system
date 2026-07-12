@@ -4,6 +4,7 @@
       <header class="profile-header">
         <div class="header-top">
           <h1 class="page-title">Profilim</h1>
+
           <button
             type="button"
             class="logout-button"
@@ -13,7 +14,10 @@
             {{ isLoggingOut ? 'Çıkış yapılıyor...' : 'Çıkış Yap' }}
           </button>
         </div>
-        <p class="page-subtitle">Hesap bilgilerinizi ve güvenlik ayarlarınızı yönetin</p>
+
+        <p class="page-subtitle">
+          Hesap bilgilerinizi ve güvenlik ayarlarınızı yönetin
+        </p>
       </header>
 
       <div v-if="isLoading" class="loading-state">
@@ -40,13 +44,24 @@
               alt="Profil fotoğrafı"
               class="avatar-image"
             />
+
             <div v-else class="avatar-placeholder">
-              {{ profileForm.name ? profileForm.name.charAt(0).toUpperCase() : '?' }}
+              {{
+                savedProfile.name
+                  ? savedProfile.name.charAt(0).toUpperCase()
+                  : '?'
+              }}
             </div>
           </div>
+
           <div class="summary-details">
-            <h2 class="summary-name">{{ profileForm.name || '—' }}</h2>
-            <p class="summary-email">{{ profileForm.email || '—' }}</p>
+            <h2 class="summary-name">
+              {{ savedProfile.name || '—' }}
+            </h2>
+
+            <p class="summary-email">
+              {{ savedProfile.email || '—' }}
+            </p>
           </div>
         </section>
 
@@ -55,115 +70,230 @@
             type="button"
             class="action-card"
             :class="{ active: activeSection === 'profile' }"
-            @click="activeSection = 'profile'"
+            @click="openProfileSection"
           >
             <span class="action-card-icon">✎</span>
             <span class="action-card-label">Profili Düzenle</span>
-            <span class="action-card-desc">Ad ve e-posta bilgilerini güncelle</span>
+            <span class="action-card-desc">
+              Ad ve e-posta bilgilerini güncelle
+            </span>
           </button>
 
           <button
             type="button"
             class="action-card"
             :class="{ active: activeSection === 'password' }"
-            @click="activeSection = 'password'"
+            @click="openPasswordSection"
           >
             <span class="action-card-icon">🔒</span>
             <span class="action-card-label">Şifre Değiştir</span>
-            <span class="action-card-desc">Hesap şifrenizi yenileyin</span>
+            <span class="action-card-desc">
+              Hesap şifrenizi yenileyin
+            </span>
           </button>
 
           <button
             type="button"
             class="action-card"
             :class="{ active: activeSection === 'photo' }"
-            @click="activeSection = 'photo'"
+            @click="openPhotoSection"
           >
             <span class="action-card-icon">📷</span>
             <span class="action-card-label">Profil Fotoğrafı</span>
-            <span class="action-card-desc">Profil görselinizi yükleyin</span>
+            <span class="action-card-desc">
+              Profil görselinizi yükleyin
+            </span>
           </button>
         </section>
 
-        <section v-if="activeSection === 'profile'" class="section-panel">
+        <section
+          v-if="activeSection === 'profile'"
+          class="section-panel"
+        >
           <div class="section-panel-header">
             <h3>Profili Düzenle</h3>
-            <button type="button" class="close-button" @click="activeSection = null">
+
+            <button
+              type="button"
+              class="close-button"
+              @click="closeProfileSection"
+            >
               Kapat
             </button>
           </div>
 
-          <form class="section-form" @submit.prevent="updateProfile">
+          <form
+            class="section-form"
+            novalidate
+            @submit.prevent="updateProfile"
+          >
             <div class="form-group">
               <label for="name">Ad Soyad</label>
+
               <input
                 id="name"
-                v-model="profileForm.name"
+                v-model.trim="profileForm.name"
                 type="text"
+                autocomplete="name"
+                placeholder="Adınızı ve soyadınızı girin"
+                :class="{ 'input-error': profileErrors.name }"
               />
+
+              <p
+                v-if="profileErrors.name"
+                class="field-error"
+              >
+                {{ profileErrors.name[0] }}
+              </p>
             </div>
 
             <div class="form-group">
               <label for="email">E-posta</label>
+
               <input
                 id="email"
-                v-model="profileForm.email"
+                v-model.trim="profileForm.email"
                 type="email"
+                autocomplete="email"
+                placeholder="ornek@email.com"
+                :class="{ 'input-error': profileErrors.email }"
               />
+
+              <p
+                v-if="profileErrors.email"
+                class="field-error"
+              >
+                {{ profileErrors.email[0] }}
+              </p>
             </div>
 
             <div class="form-actions">
-              <button type="button" class="btn-secondary" @click="activeSection = null">
+              <button
+                type="button"
+                class="btn-secondary"
+                :disabled="isUpdating"
+                @click="closeProfileSection"
+              >
                 İptal
               </button>
-              <button type="submit" class="btn-primary" :disabled="isUpdating">
-                {{ isUpdating ? 'Güncelleniyor...' : 'Profili Güncelle' }}
+
+              <button
+                type="submit"
+                class="btn-primary"
+                :disabled="isUpdating"
+              >
+                {{
+                  isUpdating
+                    ? 'Güncelleniyor...'
+                    : 'Profili Güncelle'
+                }}
               </button>
             </div>
           </form>
         </section>
 
-        <section v-if="activeSection === 'password'" class="section-panel">
+        <section
+          v-if="activeSection === 'password'"
+          class="section-panel"
+        >
           <div class="section-panel-header">
             <h3>Şifre Değiştir</h3>
-            <button type="button" class="close-button" @click="activeSection = null">
+
+            <button
+              type="button"
+              class="close-button"
+              @click="closePasswordSection"
+            >
               Kapat
             </button>
           </div>
 
-          <form class="section-form" @submit.prevent="changePassword">
+          <form
+            class="section-form"
+            novalidate
+            @submit.prevent="changePassword"
+          >
             <div class="form-group">
               <label for="current-password">Mevcut Şifre</label>
+
               <input
                 id="current-password"
                 v-model="passwordForm.current_password"
                 type="password"
+                autocomplete="current-password"
+                placeholder="Mevcut şifrenizi girin"
+                :class="{
+                  'input-error': passwordErrors.current_password,
+                }"
               />
+
+              <p
+                v-if="passwordErrors.current_password"
+                class="field-error"
+              >
+                {{ passwordErrors.current_password[0] }}
+              </p>
             </div>
 
             <div class="form-group">
               <label for="new-password">Yeni Şifre</label>
+
               <input
                 id="new-password"
                 v-model="passwordForm.password"
                 type="password"
+                autocomplete="new-password"
+                placeholder="En az 8 karakter"
+                :class="{ 'input-error': passwordErrors.password }"
               />
+
+              <p
+                v-if="passwordErrors.password"
+                class="field-error"
+              >
+                {{ passwordErrors.password[0] }}
+              </p>
             </div>
 
             <div class="form-group">
-              <label for="password-confirmation">Yeni Şifre Tekrar</label>
+              <label for="password-confirmation">
+                Yeni Şifre Tekrar
+              </label>
+
               <input
                 id="password-confirmation"
                 v-model="passwordForm.password_confirmation"
                 type="password"
+                autocomplete="new-password"
+                placeholder="Yeni şifrenizi tekrar girin"
+                :class="{
+                  'input-error': passwordErrors.password_confirmation,
+                }"
               />
+
+              <p
+                v-if="passwordErrors.password_confirmation"
+                class="field-error"
+              >
+                {{ passwordErrors.password_confirmation[0] }}
+              </p>
             </div>
 
             <div class="form-actions">
-              <button type="button" class="btn-secondary" @click="activeSection = null">
+              <button
+                type="button"
+                class="btn-secondary"
+                :disabled="isChangingPassword"
+                @click="closePasswordSection"
+              >
                 İptal
               </button>
-              <button type="submit" class="btn-primary" :disabled="isChangingPassword">
+
+              <button
+                type="submit"
+                class="btn-primary"
+                :disabled="isChangingPassword"
+              >
                 {{
                   isChangingPassword
                     ? 'Şifre değiştiriliyor...'
@@ -174,10 +304,18 @@
           </form>
         </section>
 
-        <section v-if="activeSection === 'photo'" class="section-panel">
+        <section
+          v-if="activeSection === 'photo'"
+          class="section-panel"
+        >
           <div class="section-panel-header">
             <h3>Profil Fotoğrafı</h3>
-            <button type="button" class="close-button" @click="closePhotoSection">
+
+            <button
+              type="button"
+              class="close-button"
+              @click="closePhotoSection"
+            >
               Kapat
             </button>
           </div>
@@ -189,32 +327,52 @@
                 :src="previewPhotoUrl || savedProfilePhotoUrl"
                 alt="Profil fotoğrafı önizleme"
               />
+
               <div v-else class="photo-preview-placeholder">
-                {{ profileForm.name ? profileForm.name.charAt(0).toUpperCase() : '?' }}
+                {{
+                  savedProfile.name
+                    ? savedProfile.name.charAt(0).toUpperCase()
+                    : '?'
+                }}
               </div>
             </div>
 
-            <form class="section-form" @submit.prevent="uploadPhoto">
+            <form
+              class="section-form"
+              novalidate
+              @submit.prevent="uploadPhoto"
+            >
               <div class="form-group">
                 <label for="profile-photo">Fotoğraf Seç</label>
+
                 <input
                   id="profile-photo"
                   ref="photoInput"
                   type="file"
-                  accept=".jpg,.jpeg,.png"
+                  accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                   @change="handlePhotoChange"
                 />
               </div>
 
               <p class="photo-info">
-                JPG, JPEG veya PNG. En fazla 2 MB.
+                JPG, JPEG veya PNG formatında ve en fazla 2 MB olmalıdır.
               </p>
 
               <div class="form-actions">
-                <button type="button" class="btn-secondary" @click="closePhotoSection">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  :disabled="isUploadingPhoto"
+                  @click="closePhotoSection"
+                >
                   İptal
                 </button>
-                <button type="submit" class="btn-primary" :disabled="isUploadingPhoto">
+
+                <button
+                  type="submit"
+                  class="btn-primary"
+                  :disabled="isUploadingPhoto || !selectedPhoto"
+                >
                   {{
                     isUploadingPhoto
                       ? 'Fotoğraf yükleniyor...'
@@ -231,7 +389,13 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import {
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../services/api'
 
@@ -246,57 +410,132 @@ const isLoggingOut = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
-const selectedPhoto = ref(null)
-const profilePhotoUrl = ref('')
-const savedProfilePhotoUrl = ref('')
-const previewPhotoUrl = ref('')
-const photoInput = ref(null)
 const activeSection = ref(null)
 
-watch(profilePhotoUrl, (url) => {
-  if (!selectedPhoto.value) {
-    savedProfilePhotoUrl.value = url
-  }
-}, { immediate: true })
-
-watch(selectedPhoto, (file) => {
-  if (previewPhotoUrl.value && previewPhotoUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(previewPhotoUrl.value)
-  }
-
-  previewPhotoUrl.value = file ? URL.createObjectURL(file) : ''
+const savedProfile = reactive({
+  name: '',
+  email: '',
 })
-
-watch(isUploadingPhoto, (uploading) => {
-  if (!uploading && selectedPhoto.value) {
-    resetPhotoSelection()
-  }
-})
-
-const resetPhotoSelection = () => {
-  selectedPhoto.value = null
-  profilePhotoUrl.value = savedProfilePhotoUrl.value
-
-  if (photoInput.value) {
-    photoInput.value.value = ''
-  }
-}
-
-const closePhotoSection = () => {
-  resetPhotoSelection()
-  activeSection.value = null
-}
 
 const profileForm = reactive({
   name: '',
   email: '',
 })
 
+const profileErrors = reactive({})
+
 const passwordForm = reactive({
   current_password: '',
   password: '',
   password_confirmation: '',
 })
+
+const passwordErrors = reactive({})
+
+const selectedPhoto = ref(null)
+const profilePhotoUrl = ref('')
+const savedProfilePhotoUrl = ref('')
+const previewPhotoUrl = ref('')
+const photoInput = ref(null)
+
+const clearReactiveObject = (object) => {
+  Object.keys(object).forEach((key) => {
+    delete object[key]
+  })
+}
+
+const clearMessages = () => {
+  errorMessage.value = ''
+  successMessage.value = ''
+}
+
+const revokePreviewPhotoUrl = () => {
+  if (
+    previewPhotoUrl.value &&
+    previewPhotoUrl.value.startsWith('blob:')
+  ) {
+    URL.revokeObjectURL(previewPhotoUrl.value)
+  }
+
+  previewPhotoUrl.value = ''
+}
+
+watch(
+  profilePhotoUrl,
+  (url) => {
+    if (!selectedPhoto.value) {
+      savedProfilePhotoUrl.value = url
+    }
+  },
+  { immediate: true },
+)
+
+watch(selectedPhoto, (file) => {
+  revokePreviewPhotoUrl()
+
+  if (file) {
+    previewPhotoUrl.value = URL.createObjectURL(file)
+  }
+})
+
+const resetProfileForm = () => {
+  profileForm.name = savedProfile.name
+  profileForm.email = savedProfile.email
+  clearReactiveObject(profileErrors)
+}
+
+const resetPasswordForm = () => {
+  passwordForm.current_password = ''
+  passwordForm.password = ''
+  passwordForm.password_confirmation = ''
+  clearReactiveObject(passwordErrors)
+}
+
+const resetPhotoSelection = () => {
+  selectedPhoto.value = null
+  profilePhotoUrl.value = savedProfilePhotoUrl.value
+  revokePreviewPhotoUrl()
+
+  if (photoInput.value) {
+    photoInput.value.value = ''
+  }
+}
+
+const openProfileSection = () => {
+  clearMessages()
+  resetProfileForm()
+  activeSection.value = 'profile'
+}
+
+const closeProfileSection = () => {
+  resetProfileForm()
+  errorMessage.value = ''
+  activeSection.value = null
+}
+
+const openPasswordSection = () => {
+  clearMessages()
+  resetPasswordForm()
+  activeSection.value = 'password'
+}
+
+const closePasswordSection = () => {
+  resetPasswordForm()
+  errorMessage.value = ''
+  activeSection.value = null
+}
+
+const openPhotoSection = () => {
+  clearMessages()
+  resetPhotoSelection()
+  activeSection.value = 'photo'
+}
+
+const closePhotoSection = () => {
+  resetPhotoSelection()
+  errorMessage.value = ''
+  activeSection.value = null
+}
 
 const getProfile = async () => {
   errorMessage.value = ''
@@ -305,8 +544,10 @@ const getProfile = async () => {
     const response = await api.get('/profile')
     const user = response.data.data ?? response.data
 
-    profileForm.name = user.name
-    profileForm.email = user.email
+    savedProfile.name = user.name ?? ''
+    savedProfile.email = user.email ?? ''
+
+    resetProfileForm()
 
     if (user.profile_photo_url) {
       profilePhotoUrl.value = user.profile_photo_url
@@ -317,17 +558,20 @@ const getProfile = async () => {
     } else {
       profilePhotoUrl.value = ''
     }
+
+    savedProfilePhotoUrl.value = profilePhotoUrl.value
   } catch (error) {
     errorMessage.value =
-      error.response?.data?.message || 'Profil bilgileri alınamadı.'
+      error.response?.data?.message ||
+      'Profil bilgileri alınamadı.'
   } finally {
     isLoading.value = false
   }
 }
 
 const updateProfile = async () => {
-  errorMessage.value = ''
-  successMessage.value = ''
+  clearMessages()
+  clearReactiveObject(profileErrors)
   isUpdating.value = true
 
   try {
@@ -338,19 +582,31 @@ const updateProfile = async () => {
 
     const user = response.data.data ?? response.data
 
-    profileForm.name = user.name
-    profileForm.email = user.email
+    savedProfile.name = user.name ?? profileForm.name
+    savedProfile.email = user.email ?? profileForm.email
+
+    resetProfileForm()
 
     successMessage.value =
-      response.data.message || 'Profil başarıyla güncellendi.'
-  } catch (error) {
-    const validationErrors = error.response?.data?.errors
+      response.data.message ||
+      'Profil başarıyla güncellendi.'
 
-    if (validationErrors) {
-      errorMessage.value = Object.values(validationErrors).flat()[0]
+    activeSection.value = null
+  } catch (error) {
+    const validationErrors =
+      error.response?.data?.errors ?? {}
+
+    if (Object.keys(validationErrors).length > 0) {
+      Object.assign(profileErrors, validationErrors)
+
+      errorMessage.value =
+        error.response?.data?.message ||
+        Object.values(validationErrors).flat()[0] ||
+        'Lütfen bilgilerinizi kontrol edin.'
     } else {
       errorMessage.value =
-        error.response?.data?.message || 'Profil güncellenemedi.'
+        error.response?.data?.message ||
+        'Profil güncellenemedi.'
     }
   } finally {
     isUpdating.value = false
@@ -358,31 +614,39 @@ const updateProfile = async () => {
 }
 
 const changePassword = async () => {
-  errorMessage.value = ''
-  successMessage.value = ''
+  clearMessages()
+  clearReactiveObject(passwordErrors)
   isChangingPassword.value = true
 
   try {
     const response = await api.put('/change-password', {
       current_password: passwordForm.current_password,
       password: passwordForm.password,
-      password_confirmation: passwordForm.password_confirmation,
+      password_confirmation:
+        passwordForm.password_confirmation,
     })
 
     successMessage.value =
-      response.data.message || 'Şifre başarıyla değiştirildi.'
+      response.data.message ||
+      'Şifre başarıyla değiştirildi.'
 
-    passwordForm.current_password = ''
-    passwordForm.password = ''
-    passwordForm.password_confirmation = ''
+    resetPasswordForm()
+    activeSection.value = null
   } catch (error) {
-    const validationErrors = error.response?.data?.errors
+    const validationErrors =
+      error.response?.data?.errors ?? {}
 
-    if (validationErrors) {
-      errorMessage.value = Object.values(validationErrors).flat()[0]
+    if (Object.keys(validationErrors).length > 0) {
+      Object.assign(passwordErrors, validationErrors)
+
+      errorMessage.value =
+        error.response?.data?.message ||
+        Object.values(validationErrors).flat()[0] ||
+        'Lütfen şifre bilgilerinizi kontrol edin.'
     } else {
       errorMessage.value =
-        error.response?.data?.message || 'Şifre değiştirilemedi.'
+        error.response?.data?.message ||
+        'Şifre değiştirilemedi.'
     }
   } finally {
     isChangingPassword.value = false
@@ -390,20 +654,40 @@ const changePassword = async () => {
 }
 
 const handlePhotoChange = (event) => {
-  const file = event.target.files[0] ?? null
-  selectedPhoto.value = file
+  clearMessages()
 
-  if (file) {
-    profilePhotoUrl.value = URL.createObjectURL(file)
+  const file = event.target.files?.[0] ?? null
+
+  if (!file) {
+    resetPhotoSelection()
+    return
   }
+
+  const allowedTypes = ['image/jpeg', 'image/png']
+  const maximumFileSize = 2 * 1024 * 1024
+
+  if (!allowedTypes.includes(file.type)) {
+    resetPhotoSelection()
+    errorMessage.value =
+      'Lütfen JPG, JPEG veya PNG formatında bir fotoğraf seçin.'
+    return
+  }
+
+  if (file.size > maximumFileSize) {
+    resetPhotoSelection()
+    errorMessage.value =
+      'Profil fotoğrafı en fazla 2 MB olabilir.'
+    return
+  }
+
+  selectedPhoto.value = file
 }
 
 const uploadPhoto = async () => {
-  errorMessage.value = ''
-  successMessage.value = ''
+  clearMessages()
 
   if (!selectedPhoto.value) {
-    errorMessage.value = 'Lütfen bir fotoğraf seç.'
+    errorMessage.value = 'Lütfen bir fotoğraf seçin.'
     return
   }
 
@@ -413,29 +697,34 @@ const uploadPhoto = async () => {
     const formData = new FormData()
     formData.append('photo', selectedPhoto.value)
 
-    await api.post('/profile/photo', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    const response = await api.post(
+      '/profile/photo',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       },
-    })
+    )
 
-    successMessage.value = 'Profil fotoğrafı başarıyla yüklendi.'
+    successMessage.value =
+      response.data.message ||
+      'Profil fotoğrafı başarıyla yüklendi.'
 
-    selectedPhoto.value = null
-
-    if (photoInput.value) {
-      photoInput.value.value = ''
-    }
-
+    resetPhotoSelection()
     await getProfile()
+    activeSection.value = null
   } catch (error) {
-    const validationErrors = error.response?.data?.errors
+    const validationErrors =
+      error.response?.data?.errors ?? {}
 
-    if (validationErrors) {
-      errorMessage.value = Object.values(validationErrors).flat()[0]
+    if (Object.keys(validationErrors).length > 0) {
+      errorMessage.value =
+        Object.values(validationErrors).flat()[0]
     } else {
       errorMessage.value =
-        error.response?.data?.message || 'Profil fotoğrafı yüklenemedi.'
+        error.response?.data?.message ||
+        'Profil fotoğrafı yüklenemedi.'
     }
   } finally {
     isUploadingPhoto.value = false
@@ -443,14 +732,16 @@ const uploadPhoto = async () => {
 }
 
 const logout = async () => {
-  errorMessage.value = ''
-  successMessage.value = ''
+  clearMessages()
   isLoggingOut.value = true
 
   try {
     await api.post('/logout')
   } catch (error) {
-    console.error('Logout isteği başarısız oldu:', error)
+    console.error(
+      'Çıkış isteği başarısız oldu:',
+      error,
+    )
   } finally {
     localStorage.removeItem('token')
     isLoggingOut.value = false
@@ -460,6 +751,10 @@ const logout = async () => {
 
 onMounted(() => {
   getProfile()
+})
+
+onBeforeUnmount(() => {
+  revokePreviewPhotoUrl()
 })
 </script>
 
@@ -512,7 +807,9 @@ onMounted(() => {
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
   white-space: nowrap;
 }
 
@@ -671,7 +968,10 @@ onMounted(() => {
   border-radius: 12px;
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .action-card:hover {
@@ -707,14 +1007,15 @@ onMounted(() => {
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   padding: 1.75rem;
-  animation: fadeIn 0.2s ease;
+  animation: fade-in 0.2s ease;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -747,7 +1048,10 @@ onMounted(() => {
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .close-button:hover {
@@ -786,18 +1090,43 @@ onMounted(() => {
   border-radius: 8px;
   box-sizing: border-box;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .form-group input[type='file'] {
+  width: 100%;
   font-size: 0.875rem;
   color: #4a5568;
+}
+
+.form-group input::placeholder {
+  color: #a0aec0;
 }
 
 .form-group input:focus {
   border-color: #4f6ef7;
   box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.15);
   background-color: #ffffff;
+}
+
+.form-group input.input-error {
+  border-color: #e53e3e;
+  background-color: #fffafa;
+}
+
+.form-group input.input-error:focus {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.12);
+}
+
+.field-error {
+  margin: 0;
+  color: #c53030;
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .form-actions {
@@ -815,7 +1144,10 @@ onMounted(() => {
   font-weight: 600;
   border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .btn-primary {
@@ -828,20 +1160,21 @@ onMounted(() => {
   background-color: #3b5de7;
 }
 
-.btn-primary:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
 .btn-secondary {
   color: #4a5568;
   background-color: #ffffff;
   border: 1.5px solid #e2e8f0;
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background-color: #f8fafc;
   border-color: #cbd5e0;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .photo-section {
