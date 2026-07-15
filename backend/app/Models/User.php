@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['name', 'email', 'password' , 'profile_photo', 'role',] ,)]
 #[Hidden(['password', 'remember_token'])]
@@ -30,4 +31,10 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+    public function posts(): HasMany
+    {
+        return $this->hasMany(Post::class);
+    }
+  
 }
+

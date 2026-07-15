@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Api\PostController;
 
 
 Route::get('/user', function (Request $request) {
@@ -24,3 +25,8 @@ Route::middleware(['auth:sanctum', 'admin'])->get('/admin/test', function () {
     ]);
 });
 
+Route::middleware('auth:sanctum')->post('/posts', [PostController::class, 'store']);
+Route::get('/posts', [PostController::class, 'index']);
+Route::get('/posts/{id}', [PostController::class, 'show']);
+Route::middleware('auth:sanctum')->put('/posts/{id}', [PostController::class, 'update']);
+Route::middleware('auth:sanctum')->delete('/posts/{id}', [PostController::class, 'destroy']);
