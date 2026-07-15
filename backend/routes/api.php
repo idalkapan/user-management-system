@@ -18,4 +18,9 @@ Route::middleware('auth:sanctum')->put('/profile', [ProfileController::class, 'u
 Route::middleware('auth:sanctum')->put('/change-password', [ProfileController::class, 'changePassword']);
 Route::middleware('auth:sanctum')->post('/profile/photo', [ProfileController::class, 'uploadPhoto']);
 
+Route::middleware(['auth:sanctum', 'admin'])->get('/admin/test', function () {
+    return response()->json([
+        'message' => 'Admin alanına başarıyla eriştiniz.'
+    ]);
+});
 
