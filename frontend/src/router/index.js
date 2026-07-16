@@ -4,6 +4,9 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
+import PostListView from '../views/PostListView.vue'
+import PostCreateView from '../views/PostCreateView.vue'
+import PostDetailView from '../views/PostDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -26,9 +29,25 @@ const router = createRouter({
       component: ProfileView,
     },
     {
+      path: '/posts',
+      name: 'posts',
+      component: PostListView,
+    },
+    {
+      path: '/posts/create',
+      name: 'post-create',
+      component: PostCreateView,
+    },
+    {
+      path: '/posts/:id',
+      name: 'post-detail',
+      component: PostDetailView,
+    },
+    {
       path: '/:pathMatch(.*)*',
       component: NotFoundView,
-    },
+    }
+    
   ],
 })
 

@@ -25,9 +25,8 @@ class UpdatePostRequest extends FormRequest
         return [
             'title' => 'required|string|max:255',
             'content' => 'required|string',
-            'featured_image' => 'nullable|string',
-            'status' => 'required|in:draft,published',
-            ];
+            'featured_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ];
     }
 
     public function messages(): array
@@ -40,11 +39,10 @@ class UpdatePostRequest extends FormRequest
             'content.required' => 'İçerik alanı zorunludur.',
             'content.string' => 'İçerik metin formatında olmalıdır.',
 
-            'featured_image.string' => 'Öne çıkan görsel alanı metin formatında olmalıdır.',
-
-            'status.required' => 'Durum alanı zorunludur.',
-            'status.in' => 'Durum yalnızca draft veya published olabilir.',
-            ];
+            'featured_image.image' => 'Öne çıkan görsel geçerli bir görsel dosyası olmalıdır.',
+            'featured_image.mimes' => 'Öne çıkan görsel JPG, JPEG, PNG veya WEBP formatında olmalıdır.',
+            'featured_image.max' => 'Öne çıkan görsel en fazla 2 MB olabilir.',
+        ];
     }
 
     public function attributes(): array
@@ -53,7 +51,6 @@ class UpdatePostRequest extends FormRequest
             'title' => 'başlık',
             'content' => 'içerik',
             'featured_image' => 'öne çıkan görsel',
-            'status' => 'durum',
-            ];
+        ];
     }
 }

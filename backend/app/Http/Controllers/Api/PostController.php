@@ -3,25 +3,47 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Post;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Str;
 use App\Http\Requests\StorePostRequest;
 use App\Http\Requests\UpdatePostRequest;
-use Illuminate\Support\Facades\Gate;
 use App\Http\Resources\PostResource;
+use App\Models\Post;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Http\Request;
+use App\Http\Requests\RejectPostRequest;
 
 class PostController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Yazıları listeler.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $posts = Post::with('user')
+        $user = $request->user();
+
+        $query = Post::with('user');
+
+        if (!$user || $user->role !== 'admin') {
+            $query->where('status', 'published');
+            }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            
+            $query->where(function ($query) use ($search) {
+                $query
+                 ->where('title', 'like', '%' . $search . '%')
+                 ->orWhere('content', 'like', '%' . $search . '%');
+                 });
+                 }
+        $posts = $query
             ->latest()
             ->get();
 
+        
+    
         return response()->json([
             'message' => 'Yazılar başarıyla listelendi.',
             'posts' => PostResource::collection($posts),
@@ -29,83 +51,181 @@ class PostController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Yeni yazı oluşturur.
      */
     public function store(StorePostRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        
+
+        $imagePath = null;
+
+        if ($request->hasFile('featured_image')) {
+            $imagePath = $request
+                ->file('featured_image')
+                ->store('posts', 'public');
+        }
+
         $post = Post::create([
             'user_id' => $request->user()->id,
             'title' => $validated['title'],
             'slug' => Str::slug($validated['title']) . '-' . time(),
             'content' => $validated['content'],
-            'featured_image' => $validated['featured_image'] ?? null,
-            'status' => $validated['status'],
-            ]);
+            'featured_image' => $imagePath,
+            'status' => 'pending',
+            'rejection_reason' => null,
+        ]);
 
         $post->load('user');
 
         return response()->json([
-            'message' => 'Yazı başarıyla oluşturuldu.',
+            'message' => 'Yazınız oluşturuldu ve yönetici onayına gönderildi.',
             'post' => new PostResource($post),
-            ], 201);
+        ], 201);
     }
 
     /**
-     * Display the specified resource.
+     * Belirli bir yazıyı getirir.
      */
     public function show(string $id): JsonResponse
     {
-         $post = Post::with('user')->findOrFail($id);
+        $post = Post::with('user')->findOrFail($id);
 
         return response()->json([
             'message' => 'Yazı başarıyla getirildi.',
             'post' => new PostResource($post),
-            ]);
+        ]);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Yazıyı günceller.
      */
-    
-    public function update(UpdatePostRequest $request, string $id): JsonResponse
-    {
+    public function update(
+        UpdatePostRequest $request,
+        string $id
+    ): JsonResponse {
         $post = Post::findOrFail($id);
 
         Gate::authorize('update', $post);
 
         $validated = $request->validated();
 
+        $imagePath = $post->featured_image;
+
+        if ($request->hasFile('featured_image')) {
+            if ($post->featured_image) {
+                Storage::disk('public')->delete(
+                    $post->featured_image
+                );
+            }
+
+            $imagePath = $request
+                ->file('featured_image')
+                ->store('posts', 'public');
+        }
+
         $post->update([
             'title' => $validated['title'],
             'slug' => Str::slug($validated['title']) . '-' . time(),
             'content' => $validated['content'],
-            'featured_image' => $validated['featured_image'] ?? null,
-            'status' => $validated['status'],
-            ]);
+            'featured_image' => $imagePath,
+            'status' => 'pending',
+            'rejection_reason' => null,
+        ]);
 
         $post->load('user');
 
         return response()->json([
-            'message' => 'Yazı başarıyla güncellendi.',
+            'message' => 'Yazı güncellendi ve yeniden yönetici onayına gönderildi.',
+            'post' => new PostResource($post),
+        ]);
+    }
+    public function myPosts(Request $request): JsonResponse
+    {
+        $posts = Post::with('user')
+           ->where('user_id', $request->user()->id)
+           ->latest()
+           ->get();
+
+        return response()->json([
+            'message' => 'Yazılarınız başarıyla listelendi.',
+            'posts' => PostResource::collection($posts),
+            ]);
+    }
+    /**
+ * Onay bekleyen yazıları listeler.
+ */
+    public function pending(): JsonResponse
+    {
+        $posts = Post::with('user')
+           ->where('status', 'pending')
+           ->latest()
+           ->get();
+
+        return response()->json([
+            'message' => 'Onay bekleyen yazılar başarıyla listelendi.',
+            'posts' => PostResource::collection($posts),
+            ]);
+    }
+
+    /**
+    * Yazıyı onaylar.
+    */
+    public function approve(string $id): JsonResponse
+    {
+        $post = Post::findOrFail($id);
+        
+        $post->update([
+            'status' => 'published',
+            'rejection_reason' => null,
+            ]);
+
+        return response()->json([
+            'message' => 'Yazı başarıyla onaylandı.',
             'post' => new PostResource($post),
             ]);
     }
 
     /**
-     * Remove the specified resource from storage.
+    * Yazıyı reddeder.
+    */
+    public function reject(
+        RejectPostRequest $request,
+        string $id
+    ): JsonResponse {
+        $post = Post::findOrFail($id);
+    
+        $post->update([
+            'status' => 'rejected',
+            'rejection_reason' => $request->validated()['rejection_reason'],
+        ]);
+    
+        $post->load('user');
+    
+        return response()->json([
+            'message' => 'Yazı reddedildi.',
+            'post' => new PostResource($post),
+        ]);
+    }
+
+    /**
+     * Yazıyı siler.
      */
     public function destroy(string $id): JsonResponse
     {
         $post = Post::findOrFail($id);
-        
+
         Gate::authorize('delete', $post);
 
+        if ($post->featured_image) {
+            Storage::disk('public')->delete(
+                $post->featured_image
+            );
+        }
+
         $post->delete();
-        
+
         return response()->json([
             'message' => 'Yazı başarıyla silindi.',
-            ]);
+        ]);
     }
 }

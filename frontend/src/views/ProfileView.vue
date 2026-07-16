@@ -104,6 +104,32 @@
               Profil görselinizi yükleyin
             </span>
           </button>
+          <RouterLink
+          v-if="savedProfile.role === 'admin'"
+          to="/posts"
+          class="action-card"
+          >
+          <span class="action-card-icon">📝</span>
+          <span class="action-card-label">Blog Yönetimi</span>
+          <span class="action-card-desc">
+            Blog yazılarınızı yönetin
+          </span>
+        </RouterLink>
+
+        <RouterLink
+          v-if="savedProfile.role === 'user'"
+          to="/posts"
+          class="action-card"
+        >
+        
+          <span class="action-card-icon">📰</span>
+          <span class="action-card-label">Blog Yazıları</span>
+          <span class="action-card-desc">
+            Yayınlanan blog yazılarını görüntüle
+          </span>
+
+      </RouterLink>
+
         </section>
 
         <section
@@ -120,6 +146,8 @@
             >
               Kapat
             </button>
+           
+
           </div>
 
           <form
@@ -415,6 +443,7 @@ const activeSection = ref(null)
 const savedProfile = reactive({
   name: '',
   email: '',
+  role: '',
 })
 
 const profileForm = reactive({
@@ -543,8 +572,10 @@ const getProfile = async () => {
   try {
     const response = await api.get('/profile')
     const user = response.data.data ?? response.data
+    console.log('Profil kullanıcısı:', user)
 
     savedProfile.name = user.name ?? ''
+    savedProfile.role = user.role ?? ''
     savedProfile.email = user.email ?? ''
 
     resetProfileForm()
