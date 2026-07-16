@@ -9,6 +9,7 @@ import PostCreateView from '../views/PostCreateView.vue'
 import PostDetailView from '../views/PostDetailView.vue'
 import MyPostsView from '../views/MyPostsView.vue'
 import AdminPostsView from '../views/AdminPostsView.vue'
+import PostEditView from '../views/PostEditView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -49,6 +50,11 @@ const router = createRouter({
       path: '/posts/create',
       name: 'post-create',
       component: PostCreateView,
+    },
+    {
+      path: '/posts/:id/edit',
+      name: 'post-edit',
+      component: PostEditView,
     },
     {
       path: '/posts/:id',

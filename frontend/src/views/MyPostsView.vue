@@ -11,6 +11,10 @@ const activeFilter = ref('all')
 const isLoading = ref(true)
 const errorMessage = ref('')
 
+const postToDelete = ref(null)
+const isDeleteModalOpen = ref(false)
+const isDeleting = ref(false)
+
 const currentUserRole = ref('')
 
 const isAdmin = computed(() => {
@@ -94,6 +98,46 @@ const goToCreatePost = () => {
 
 const goToEditPost = (postId) => {
   router.push(`/posts/${postId}/edit`)
+}
+const openDeleteModal = (post) => {
+  postToDelete.value = post
+  isDeleteModalOpen.value = true
+}
+const closeDeleteModal = () => {
+  if (isDeleting.value) {
+    return
+  }
+
+  isDeleteModalOpen.value = false
+  postToDelete.value = null
+}
+
+const confirmDeletePost = async () => {
+  if (!postToDelete.value) {
+    return
+  }
+
+  isDeleting.value = true
+  errorMessage.value = ''
+
+  try {
+    await api.delete(`/posts/${postToDelete.value.id}`)
+
+    posts.value = posts.value.filter(
+      (post) => post.id !== postToDelete.value.id,
+    )
+
+    isDeleteModalOpen.value = false
+    postToDelete.value = null
+  } catch (error) {
+    console.error('Yazı silinemedi:', error)
+
+    errorMessage.value =
+      error.response?.data?.message ||
+      'Yazı silinirken bir hata oluştu.'
+  } finally {
+    isDeleting.value = false
+  }
 }
 
 const getStatusLabel = (status) => {
@@ -210,10 +254,10 @@ onMounted(async () => {
       <section class="management-panel">
         <div class="panel-header">
           <div>
-            <h2>Yazılarım</h2>
+            <h2>Yazı Yönetimi</h2>
 
             <p>
-              Oluşturduğunuz blog yazılarını buradan yönetebilirsiniz.
+              Yazılarınızı filtreleyebilir, düzenleyebilir veya silebilirsiniz.
             </p>
           </div>
 
@@ -398,6 +442,7 @@ onMounted(async () => {
               <button
                 type="button"
                 class="action-button delete-button"
+                @click="openDeleteModal(post)"
               >
                 Sil
               </button>
@@ -407,6 +452,46 @@ onMounted(async () => {
       </section>
     </div>
   </div>
+  <div
+  v-if="isDeleteModalOpen"
+  class="modal-overlay"
+  @click.self="closeDeleteModal"
+>
+  <div class="delete-modal">
+    <div class="delete-modal-icon">!</div>
+
+    <h3>Yazıyı Sil</h3>
+
+    <p>
+      <strong>{{ postToDelete?.title }}</strong>
+      başlıklı yazıyı silmek istediğinize emin misiniz?
+    </p>
+
+    <p class="delete-warning">
+      Bu işlem geri alınamaz.
+    </p>
+
+    <div class="delete-modal-actions">
+      <button
+        type="button"
+        class="modal-cancel-button"
+        :disabled="isDeleting"
+        @click="closeDeleteModal"
+      >
+        İptal
+      </button>
+
+      <button
+        type="button"
+        class="modal-delete-button"
+        :disabled="isDeleting"
+        @click="confirmDeletePost"
+      >
+        {{ isDeleting ? 'Siliniyor...' : 'Yazıyı Sil' }}
+      </button>
+    </div>
+  </div>
+</div>
 </template>
 
 <style scoped>
@@ -998,5 +1083,93 @@ onMounted(async () => {
   .post-actions {
     flex-direction: column;
   }
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.delete-modal {
+  width: 100%;
+  max-width: 430px;
+  padding: 2rem;
+  background: #ffffff;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+}
+
+.delete-modal-icon {
+  width: 70px;
+  height: 70px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.delete-modal h3 {
+  margin-bottom: 0.75rem;
+  color: #1f2937;
+}
+
+.delete-modal p {
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.delete-warning {
+  margin-top: 0.75rem;
+  color: #dc2626 !important;
+  font-weight: 600;
+}
+
+.delete-modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.modal-cancel-button,
+.modal-delete-button {
+  flex: 1;
+  padding: 0.85rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-cancel-button {
+  background: white;
+  border: 1px solid #d1d5db;
+}
+
+.modal-cancel-button:hover {
+  background: #f9fafb;
+}
+
+.modal-delete-button {
+  background: #dc2626;
+  color: white;
+  border: none;
+}
+
+.modal-delete-button:hover {
+  background: #b91c1c;
+}
+
+.modal-delete-button:disabled,
+.modal-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>
