@@ -354,6 +354,13 @@ onMounted(async () => {
               <p class="post-content">
                 {{ post.content }}
               </p>
+              <div
+                 v-if="post.status === 'rejected' && post.rejection_reason"
+                 class="rejection-box"
+              >
+                 <strong>Red Sebebi:</strong>
+                 <span>{{ post.rejection_reason }}</span>
+              </div>
 
               <div class="post-meta">
                 <span class="author-avatar">
@@ -825,6 +832,27 @@ onMounted(async () => {
   line-height: 1.6;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+.rejection-box {
+  margin: 0 0 1rem;
+  padding: 0.9rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid #dc2626;
+  border-radius: 8px;
+}
+
+.rejection-box strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #991b1b;
+  font-size: 0.85rem;
+}
+
+.rejection-box span {
+  color: #7f1d1d;
+  font-size: 0.85rem;
+  line-height: 1.5;
 }
 
 .post-meta {

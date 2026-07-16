@@ -66,6 +66,14 @@ const statusLabel = computed(() => {
     return 'Taslak'
   }
 
+  if (post.value?.status === 'pending') {
+    return 'Onay Bekliyor'
+  }
+
+  if (post.value?.status === 'rejected') {
+    return 'Reddedildi'
+  }
+
   return 'Durum belirtilmemiş'
 })
 
@@ -84,6 +92,11 @@ const formatDate = (date) => {
 }
 
 const goBack = () => {
+  if (route.query.from === 'admin') {
+    router.push('/admin/posts')
+    return
+  }
+
   router.push('/my-posts')
 }
 
@@ -105,7 +118,7 @@ onMounted(() => {
           class="back-button"
           @click="goBack"
         >
-          ← Yazılarıma Dön
+        {{ route.query.from === 'admin' ? '← Admin Paneline Dön' : '← Yazılarıma Dön' }}
         </button>
       </header>
 
@@ -153,11 +166,12 @@ onMounted(() => {
             </span>
 
             <button
-              type="button"
-              class="edit-button"
-              @click="goToEdit"
+               v-if="route.query.from !== 'admin'"
+               type="button"
+               class="edit-button"
+               @click="goToEdit"
             >
-              Düzenle
+               Düzenle
             </button>
           </div>
 
