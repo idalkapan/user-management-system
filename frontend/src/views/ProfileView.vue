@@ -118,14 +118,14 @@
 
         <RouterLink
           v-if="savedProfile.role === 'user'"
-          to="/posts"
+          to="/my-posts"
           class="action-card"
         >
         
           <span class="action-card-icon">📰</span>
-          <span class="action-card-label">Blog Yazıları</span>
+          <span class="action-card-label">Yazılarım</span>
           <span class="action-card-desc">
-            Yayınlanan blog yazılarını görüntüle
+            Oluşturduğunuz blog yazılarınızı yönetin.
           </span>
 
       </RouterLink>

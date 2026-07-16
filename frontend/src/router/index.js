@@ -7,6 +7,7 @@ import NotFoundView from '../views/NotFoundView.vue'
 import PostListView from '../views/PostListView.vue'
 import PostCreateView from '../views/PostCreateView.vue'
 import PostDetailView from '../views/PostDetailView.vue'
+import MyPostsView from '../views/MyPostsView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -32,6 +33,11 @@ const router = createRouter({
       path: '/posts',
       name: 'posts',
       component: PostListView,
+    },
+    {
+      path: '/my-posts',
+      name: 'my-posts',
+      component: MyPostsView,
     },
     {
       path: '/posts/create',

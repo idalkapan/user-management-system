@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getPosts } from '../services/postService'
+import { getMyPosts } from '../services/postService'
 import api from '../services/api'
 
 const router = useRouter()
@@ -34,7 +34,7 @@ const loadPosts = async () => {
   errorMessage.value = ''
 
   try {
-    const response = await getPosts()
+    const response = await getMyPosts()
 
     posts.value =
       response.data.posts ??

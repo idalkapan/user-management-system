@@ -8,6 +8,9 @@ export const getPost = (id) => {
   return api.get(`/posts/${id}`)
 }
 
+export const getMyPosts = () => {
+  return api.get('/my-posts')
+}
 export const createPost = (postData) => {
   return api.post('/posts', postData)
 }
