@@ -2,32 +2,16 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPosts } from '../services/postService'
-import api from '../services/api'
+
 
 const router = useRouter()
 
 const posts = ref([])
-const activeFilter = ref('all')
+const searchQuery = ref('')
 const isLoading = ref(true)
 const errorMessage = ref('')
 
-const currentUserRole = ref('')
 
-const isAdmin = computed(() => {
-  return currentUserRole.value === 'admin'
-})
-
-const loadCurrentUser = async () => {
-  try {
-    const response = await api.get('/profile')
-    const user = response.data.data ?? response.data
-
-    currentUserRole.value = user.role ?? ''
-  } catch (error) {
-    console.error('Kullanıcı rolü alınamadı:', error)
-    currentUserRole.value = ''
-  }
-}
 
 const loadPosts = async () => {
   isLoading.value = true
@@ -53,42 +37,24 @@ const loadPosts = async () => {
 }
 
 const filteredPosts = computed(() => {
-  if (activeFilter.value === 'all') {
-    return posts.value
-  }
+  const searchText = searchQuery.value.trim().toLocaleLowerCase('tr-TR')
 
-  return posts.value.filter(
-    (post) => post.status === activeFilter.value,
-  )
+  return posts.value.filter((post) => {
+    const isPublished = post.status === 'published'
+
+    const matchesSearch =
+      post.title?.toLocaleLowerCase('tr-TR').includes(searchText) ||
+      post.content?.toLocaleLowerCase('tr-TR').includes(searchText)
+
+    return isPublished && matchesSearch
+  })
 })
-
-const publishedPostCount = computed(() => {
-  return posts.value.filter(
-    (post) => post.status === 'published',
-  ).length
-})
-
-const pendingPostCount = computed(() => {
-  return posts.value.filter(
-    (post) => post.status === 'pending',
-  ).length
-})
-
-const setFilter = (filter) => {
-  activeFilter.value = filter
-}
 
 const goToProfile = () => {
   router.push('/profile')
 }
 
-const goToCreatePost = () => {
-  router.push('/posts/create')
-}
 
-const goToEditPost = (postId) => {
-  router.push(`/posts/${postId}/edit`)
-}
 
 const getStatusLabel = (status) => {
   if (status === 'published') {
@@ -122,9 +88,8 @@ const formatDate = (date) => {
   }).format(new Date(date))
 }
 
-onMounted(async () => {
-  await loadCurrentUser()
-  await loadPosts()
+onMounted(() => {
+  loadPosts()
 })
 </script>
 
@@ -142,71 +107,22 @@ onMounted(async () => {
           </button>
 
           <div class="header-text">
-            <h1>Blog Yönetimi</h1>
-
+            <h1>Blog Yazıları</h1>
+            
             <p>
-              Blog yazılarınızı görüntüleyin, düzenleyin ve yönetin.
+              Yayınlanmış blog yazılarını okuyabilir ve içeriklerde arama yapabilirsiniz.
             </p>
           </div>
+
         </div>
 
-        <button
-          v-if="isAdmin"
-          type="button"
-          class="create-button"
-          @click="goToCreatePost"
-        >
-          <span class="button-icon">+</span>
-          Yeni Yazı Ekle
-        </button>
+       
       </header>
-
-      <section class="statistics-grid">
-        <div class="statistic-card">
-          <div class="statistic-icon">📝</div>
-
-          <div>
-            <span class="statistic-label">Tüm Yazılar</span>
-            <strong class="statistic-value">
-              {{ posts.length }}
-            </strong>
-          </div>
-        </div>
-
-        <div class="statistic-card">
-          <div class="statistic-icon">✓</div>
-
-          <div>
-            <span class="statistic-label">Yayınlananlar</span>
-            <strong class="statistic-value">
-              {{ publishedPostCount }}
-            </strong>
-          </div>
-        </div>
-
-        <div 
-             v-if="isAdmin" 
-             class="statistic-card">
-             
-          <div class="statistic-icon">📄</div>
-
-          <div>
-            <span class="statistic-label">Onay Bekleyenler</span>
-            <strong class="statistic-value">
-              {{ pendingPostCount }}
-            </strong>
-          </div>
-        </div>
-      </section>
 
       <section class="management-panel">
         <div class="panel-header">
           <div>
-            <h2>Yazılarım</h2>
-
-            <p>
-              Oluşturduğunuz blog yazılarını buradan yönetebilirsiniz.
-            </p>
+            <h2>Yayınlanan Yazılar</h2>
           </div>
 
           <button
@@ -219,38 +135,13 @@ onMounted(async () => {
           </button>
         </div>
 
-        <div class="filter-tabs">
-          <button
-            type="button"
-            class="filter-button"
-            :class="{ active: activeFilter === 'all' }"
-            @click="setFilter('all')"
-          >
-            Tümü
-            <span>{{ posts.length }}</span>
-          </button>
-
-          <button
-            type="button"
-            class="filter-button"
-            :class="{ active: activeFilter === 'published' }"
-            @click="setFilter('published')"
-          >
-            Yayınlananlar
-            <span>{{ publishedPostCount }}</span>
-          </button>
-
-          <button
-            type="button"
-            class="filter-button"
-            :class="{ active: activeFilter === 'pending' }"
-            @click="setFilter('pending')"
-          >
-          
-            Onay Bekleyenler
-          
-            <span>{{ pendingPostCount }}</span>
-        </button>
+        <div class="search-box">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Başlık veya içerikte ara..."
+            class="search-input"
+          />
         </div>
 
         <div
@@ -271,34 +162,28 @@ onMounted(async () => {
         </div>
 
         <div
+        
           v-else-if="filteredPosts.length === 0"
           class="empty-state"
-        >
-          <div class="empty-icon">🗒️</div>
+       >
+         <div class="empty-icon">🗒️</div>
+         <h3>
+          {{
+          searchQuery.trim()
+          ? 'Aramanızla eşleşen blog yazısı bulunamadı.'
+          : 'Henüz yayınlanmış blog yazısı bulunmuyor.'
+          }}
 
-          <h3>
-            {{
-              activeFilter === 'pending'
-                ? 'Onay bekleyen yazı bulunamadı'
-                : activeFilter === 'published'
-                  ? 'Yayınlanmış yazı bulunamadı'
-                  : 'Henüz blog yazısı bulunmuyor'
-            }}
-          </h3>
+        </h3>
 
-          <p>
-            Yeni bir blog yazısı oluşturarak içeriklerinizi paylaşmaya
-            başlayabilirsiniz.
-          </p>
-
-          <button
-            type="button"
-            class="empty-create-button"
-            @click="goToCreatePost"
-          >
-            Yeni Yazı Oluştur
-          </button>
-        </div>
+        <p>
+          {{
+          searchQuery.trim()
+          ? 'Farklı bir başlık veya içerik kelimesiyle tekrar arama yapabilirsiniz.'
+          : 'Yayınlanmış bir blog yazısı olduğunda burada görüntülenecektir.'
+          }}
+        </p>
+     </div>
 
         <div
           v-else
@@ -355,25 +240,11 @@ onMounted(async () => {
                 <button
                   type="button"
                   class="action-button view-button"
-                  @click="router.push(`/posts/${post.id}`)"
+                  @click="router.push(`/posts/${post.id}?from=blog`)"
                 >
                   Görüntüle
                 </button>
 
-              <button
-                type="button"
-                class="action-button edit-button"
-                @click="goToEditPost(post.id)"
-              >
-                Düzenle
-              </button>
-
-              <button
-                type="button"
-                class="action-button delete-button"
-              >
-                Sil
-              </button>
             </div>
           </article>
         </div>
@@ -441,86 +312,6 @@ onMounted(async () => {
   text-decoration: underline;
 }
 
-.create-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  padding: 0.8rem 1.3rem;
-  color: #ffffff;
-  background-color: #4f6ef7;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(79, 110, 247, 0.2);
-  transition:
-    background-color 0.2s ease,
-    transform 0.1s ease,
-    box-shadow 0.2s ease;
-}
-
-.create-button:hover {
-  background-color: #3b5de7;
-  box-shadow: 0 6px 16px rgba(79, 110, 247, 0.25);
-}
-
-.create-button:active {
-  transform: scale(0.98);
-}
-
-.button-icon {
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-.statistics-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.statistic-card {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.25rem;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-}
-
-.statistic-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  flex-shrink: 0;
-  background-color: #eef2ff;
-  border-radius: 10px;
-  color: #4f6ef7;
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.statistic-label {
-  display: block;
-  margin-bottom: 0.25rem;
-  color: #718096;
-  font-size: 0.8125rem;
-}
-
-.statistic-value {
-  display: block;
-  color: #1a1a2e;
-  font-size: 1.4rem;
-  font-weight: 700;
-}
-
 .management-panel {
   padding: 1.75rem;
   background-color: #ffffff;
@@ -569,57 +360,22 @@ onMounted(async () => {
   cursor: not-allowed;
 }
 
-.filter-tabs {
-  display: flex;
-  gap: 0.5rem;
-  padding-bottom: 1.25rem;
-  margin-bottom: 1.25rem;
-  border-bottom: 1px solid #e2e8f0;
-  overflow-x: auto;
+.search-box {
+  margin-bottom: 1.5rem;
 }
 
-.filter-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 0.875rem;
-  color: #718096;
-  background-color: transparent;
-  border: 1.5px solid transparent;
+.search-input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
-.filter-button span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 0.35rem;
-  background-color: #edf2f7;
-  border-radius: 999px;
-  color: #4a5568;
-  font-size: 0.75rem;
-}
-
-.filter-button:hover {
-  color: #4f6ef7;
-  background-color: #f8faff;
-}
-
-.filter-button.active {
-  color: #4f6ef7;
-  background-color: #eef2ff;
-  border-color: #c7d2fe;
-}
-
-.filter-button.active span {
-  color: #ffffff;
-  background-color: #4f6ef7;
+.search-input:focus {
+  border-color: #4f6ef7;
 }
 
 .alert {
@@ -700,17 +456,6 @@ onMounted(async () => {
   color: #718096;
   font-size: 0.875rem;
   line-height: 1.6;
-}
-
-.empty-create-button {
-  padding: 0.7rem 1.2rem;
-  color: #ffffff;
-  background-color: #4f6ef7;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .posts-list {
@@ -869,24 +614,6 @@ onMounted(async () => {
   background-color: #f8fafc;
 }
 
-.edit-button {
-  color: #4f6ef7;
-  border: 1px solid #c7d2fe;
-}
-
-.edit-button:hover {
-  background-color: #eef2ff;
-}
-
-.delete-button {
-  color: #dc2626;
-  border: 1px solid #fecaca;
-}
-
-.delete-button:hover {
-  background-color: #fef2f2;
-}
-
 @media (max-width: 760px) {
   .posts-page {
     padding: 1.25rem 1rem 2rem;
@@ -895,14 +622,6 @@ onMounted(async () => {
   .page-header {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .create-button {
-    width: 100%;
-  }
-
-  .statistics-grid {
-    grid-template-columns: 1fr;
   }
 
   .management-panel {
@@ -938,11 +657,7 @@ onMounted(async () => {
   .header-text h1 {
     font-size: 1.55rem;
   }
-
-  .filter-tabs {
-    padding-bottom: 1rem;
-  }
-
+  
   .post-actions {
     flex-direction: column;
   }

@@ -97,6 +97,11 @@ const goBack = () => {
     return
   }
 
+  if (route.query.from === 'blog') {
+    router.push('/posts')
+    return
+  }
+
   router.push('/my-posts')
 }
 
@@ -118,8 +123,16 @@ onMounted(() => {
           class="back-button"
           @click="goBack"
         >
-        {{ route.query.from === 'admin' ? '← Admin Paneline Dön' : '← Yazılarıma Dön' }}
+        {{
+        route.query.from === 'admin'
+        ? '← Admin Paneline Dön'
+        : route.query.from === 'blog'
+           ? '← Blog Yazılarına Dön'
+           : '← Yazılarıma Dön'
+           }}
+
         </button>
+
       </header>
 
       <div
@@ -166,7 +179,7 @@ onMounted(() => {
             </span>
 
             <button
-               v-if="route.query.from !== 'admin'"
+               v-if="route.query.from === 'my-posts'"
                type="button"
                class="edit-button"
                @click="goToEdit"

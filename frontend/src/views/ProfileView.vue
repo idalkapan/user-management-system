@@ -129,6 +129,17 @@
           </span>
 
       </RouterLink>
+      
+      <RouterLink to="/posts" class="action-card">
+        
+        <div class="action-icon">📚</div>
+        
+        <div>
+          <h3>Blog Yazıları</h3>
+           <p>Yayınlanmış blog yazılarını görüntüleyin ve arama yapın.</p>
+        </div>
+      
+      </RouterLink>
 
         </section>
 
