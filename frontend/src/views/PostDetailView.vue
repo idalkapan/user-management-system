@@ -84,7 +84,7 @@ const formatDate = (date) => {
 }
 
 const goBack = () => {
-  router.push('/posts')
+  router.push('/my-posts')
 }
 
 const goToEdit = () => {
@@ -105,7 +105,7 @@ onMounted(() => {
           class="back-button"
           @click="goBack"
         >
-          ← Blog Yönetimine Dön
+          ← Yazılarıma Dön
         </button>
       </header>
 
@@ -210,23 +210,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <footer class="post-footer">
-          <button
-            type="button"
-            class="footer-back-button"
-            @click="goBack"
-          >
-            ← Yazılara Dön
-          </button>
-
-          <button
-            type="button"
-            class="footer-edit-button"
-            @click="goToEdit"
-          >
-            Yazıyı Düzenle
-          </button>
-        </footer>
+        
       </article>
     </div>
   </div>

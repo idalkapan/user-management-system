@@ -71,14 +71,16 @@ class PostController extends Controller
             'slug' => Str::slug($validated['title']) . '-' . time(),
             'content' => $validated['content'],
             'featured_image' => $imagePath,
-            'status' => 'pending',
+            'status' => $validated['status'],
             'rejection_reason' => null,
         ]);
 
         $post->load('user');
 
         return response()->json([
-            'message' => 'Yazınız oluşturuldu ve yönetici onayına gönderildi.',
+            'message' => $validated['status'] === 'draft'
+               ? 'Yazınız taslak olarak kaydedildi.'
+               : 'Yazınız oluşturuldu ve yönetici onayına gönderildi.',
             'post' => new PostResource($post),
         ], 201);
     }
@@ -128,14 +130,16 @@ class PostController extends Controller
             'slug' => Str::slug($validated['title']) . '-' . time(),
             'content' => $validated['content'],
             'featured_image' => $imagePath,
-            'status' => 'pending',
+            'status' => $validated['status'],
             'rejection_reason' => null,
         ]);
 
         $post->load('user');
 
         return response()->json([
-            'message' => 'Yazı güncellendi ve yeniden yönetici onayına gönderildi.',
+            'message' => $validated['status'] === 'draft'
+               ? 'Yazınız taslak olarak güncellendi.'
+               : 'Yazınız güncellendi ve yönetici onayına gönderildi.',
             'post' => new PostResource($post),
         ]);
     }

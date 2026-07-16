@@ -106,13 +106,13 @@
           </button>
           <RouterLink
           v-if="savedProfile.role === 'admin'"
-          to="/posts"
+          to="/admin/posts"
           class="action-card"
           >
           <span class="action-card-icon">📝</span>
-          <span class="action-card-label">Blog Yönetimi</span>
+          <span class="action-card-label">Admin Paneli</span>
           <span class="action-card-desc">
-            Blog yazılarınızı yönetin
+            Onay bekleyen blog yazılarını inceleyin ve yönetin.
           </span>
         </RouterLink>
 

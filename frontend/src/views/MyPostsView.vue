@@ -74,6 +74,12 @@ const pendingPostCount = computed(() => {
   ).length
 })
 
+const draftPostCount = computed(() => {
+  return posts.value.filter(
+    (post) => post.status === 'draft',
+  ).length
+})
+
 const setFilter = (filter) => {
   activeFilter.value = filter
 }
@@ -93,6 +99,9 @@ const goToEditPost = (postId) => {
 const getStatusLabel = (status) => {
   if (status === 'published') {
     return 'Yayında'
+  }
+  if (status === 'draft') {
+    return 'Taslak'
   }
 
   if (status === 'pending') {
@@ -142,7 +151,7 @@ onMounted(async () => {
           </button>
 
           <div class="header-text">
-            <h1>Blog Yönetimi</h1>
+            <h1> Yazılarım </h1>
 
             <p>
               Blog yazılarınızı görüntüleyin, düzenleyin ve yönetin.
@@ -151,7 +160,6 @@ onMounted(async () => {
         </div>
 
         <button
-          v-if="isAdmin"
           type="button"
           class="create-button"
           @click="goToCreatePost"
@@ -239,6 +247,17 @@ onMounted(async () => {
             Yayınlananlar
             <span>{{ publishedPostCount }}</span>
           </button>
+         
+          <button
+            type="button"
+            class="filter-button"
+            :class="{ active: activeFilter === 'draft' }"
+            @click="setFilter('draft')"
+         >
+            Taslaklar
+            
+            <span>{{ draftPostCount }}</span>
+        </button>
 
           <button
             type="button"
@@ -314,6 +333,7 @@ onMounted(async () => {
                 <span
                   class="status-badge"
                   :class="{
+                    draft: post.status === 'draft',
                     published: post.status === 'published',
                     pending: post.status === 'pending',
                     rejected: post.status === 'rejected',
@@ -762,6 +782,10 @@ onMounted(async () => {
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 700;
+}
+.status-badge.draft {
+  color: #1d4ed8;
+  background-color: #dbeafe;
 }
 
 .status-badge.published {

@@ -25,6 +25,7 @@ class UpdatePostRequest extends FormRequest
         return [
             'title' => 'required|string|max:255',
             'content' => 'required|string',
+            'status' => 'required|in:draft,pending',
             'featured_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ];
     }
@@ -38,6 +39,9 @@ class UpdatePostRequest extends FormRequest
 
             'content.required' => 'İçerik alanı zorunludur.',
             'content.string' => 'İçerik metin formatında olmalıdır.',
+
+            'status.required' => 'Yayın durumu seçilmelidir.',
+            'status.in' => 'Geçersiz yayın durumu seçildi.',
 
             'featured_image.image' => 'Öne çıkan görsel geçerli bir görsel dosyası olmalıdır.',
             'featured_image.mimes' => 'Öne çıkan görsel JPG, JPEG, PNG veya WEBP formatında olmalıdır.',

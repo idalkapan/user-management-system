@@ -112,7 +112,7 @@ const createPost = async () => {
       },
     })
 
-    router.push('/posts')
+    router.push('/my-posts')
   } catch (error) {
     const validationErrors =
       error.response?.data?.errors ?? {}
@@ -135,7 +135,7 @@ const createPost = async () => {
 }
 
 const goBack = () => {
-  router.push('/posts')
+  router.push('/my-posts')
 }
 </script>
 
@@ -148,7 +148,7 @@ const goBack = () => {
           class="back-button"
           @click="goBack"
         >
-          ← Blog Yönetimine Dön
+          ← Yazılarıma Dön
         </button>
 
         <div class="header-content">
@@ -157,7 +157,7 @@ const goBack = () => {
 
             <p>
               Yeni bir içerik oluşturun ve taslak olarak
-              kaydedin veya doğrudan yayınlayın.
+              kaydedin veya onaya gönderin.
             </p>
           </div>
         </div>
@@ -250,7 +250,7 @@ const goBack = () => {
               <h2>Yayın Ayarları</h2>
 
               <p>
-                Yazının durumunu ve kapak görselini belirleyin.
+                Yazınızın durumunu ve kapak görselini belirleyin.
               </p>
             </div>
           </div>
@@ -283,23 +283,22 @@ const goBack = () => {
               <label
                 class="status-option"
                 :class="{
-                  selected: form.status === 'published',
-                }"
+                  selected: form.status === 'pending',
+                  }"
               >
                 <input
                   v-model="form.status"
                   type="radio"
-                  value="published"
+                  value="pending"
                 />
 
                 <span class="status-icon">✓</span>
 
                 <span class="status-content">
-                  <strong>Hemen Yayınla</strong>
+                  <strong>Onaya Gönder</strong>
 
                   <small>
-                    Yazı kullanıcıların görebileceği şekilde
-                    yayınlanır.
+                    Yazınız admin onayına gönderilir. Onaylandıktan sonra yayınlanır.
                   </small>
                 </span>
               </label>
@@ -386,13 +385,13 @@ const goBack = () => {
             class="submit-button"
             :disabled="isSubmitting"
           >
-            {{
-              isSubmitting
-                ? 'Yazı kaydediliyor...'
-                : form.status === 'published'
-                  ? 'Yazıyı Yayınla'
-                  : 'Taslak Olarak Kaydet'
-            }}
+          {{
+          isSubmitting
+          ? 'Yazı kaydediliyor...'
+          : form.status === 'pending'
+             ? 'Admin Onayına Gönder'
+             : 'Taslak Olarak Kaydet'
+             }}
           </button>
         </div>
       </form>
