@@ -83,6 +83,11 @@ const draftPostCount = computed(() => {
     (post) => post.status === 'draft',
   ).length
 })
+const rejectedPostCount = computed(() => {
+  return posts.value.filter(
+    (post) => post.status === 'rejected',
+  ).length
+})
 
 const setFilter = (filter) => {
   activeFilter.value = filter
@@ -248,6 +253,18 @@ onMounted(async () => {
               {{ pendingPostCount }}
             </strong>
           </div>
+          
+          <div class="statistic-card">
+            <div class="statistic-icon">❌</div>
+            
+            <div>
+              <span class="statistic-label">Reddedilenler</span>
+              <strong class="statistic-value">
+                
+                {{ rejectedPostCount }}
+              </strong>
+              </div>
+            </div>
         </div>
       </section>
 
@@ -313,6 +330,16 @@ onMounted(async () => {
             Onay Bekleyenler
           
             <span>{{ pendingPostCount }}</span>
+        </button>
+        
+        <button
+              type="button"
+              class="filter-button"
+              :class="{ active: activeFilter === 'rejected' }"
+              @click="setFilter('rejected')"
+        >
+             Reddedilenler
+             <span>{{ rejectedPostCount }}</span>
         </button>
         </div>
 
