@@ -437,6 +437,9 @@ import {
 } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../services/api'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
 
 const router = useRouter()
 
@@ -778,16 +781,10 @@ const logout = async () => {
   isLoggingOut.value = true
 
   try {
-    await api.post('/logout')
-  } catch (error) {
-    console.error(
-      'Çıkış isteği başarısız oldu:',
-      error,
-    )
+    await authStore.logout()
+    await router.push('/login')
   } finally {
-    localStorage.removeItem('token')
     isLoggingOut.value = false
-    router.push('/login')
   }
 }
 

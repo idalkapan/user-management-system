@@ -42,7 +42,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import api from '../services/api'
+import { useAuthStore } from '../stores/auth'
 
 const email = ref('')
 const password = ref('')
@@ -50,19 +50,17 @@ const errorMessage = ref('')
 const isLoading = ref(false)
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const login = async () => {
   errorMessage.value = ''
   isLoading.value = true
 
   try {
-    const response = await api.post('/login', {
+    await authStore.login({
       email: email.value,
       password: password.value,
     })
-    console.log(response.data)
-
-    localStorage.setItem('token', response.data.data.token)
 
     router.push('/profile')
   } catch (error) {
