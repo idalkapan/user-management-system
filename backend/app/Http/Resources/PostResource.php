@@ -29,8 +29,13 @@ class PostResource extends JsonResource
                 'id' => $this->user->id,
                 'name' => $this->user->name,
                 ],
-                
-            
+
+            'category' => $this->whenLoaded('category', fn () => [
+                'id' => $this->category->id,
+                'name' => $this->category->name,
+                'slug' => $this->category->slug,
+            ]),
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             ];

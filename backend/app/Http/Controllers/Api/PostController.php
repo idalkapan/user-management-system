@@ -23,7 +23,7 @@ class PostController extends Controller
     {
         $user = $request->user();
 
-        $query = Post::with('user');
+        $query = Post::with(['user', 'category']);
 
         if (!$user || $user->role !== 'admin') {
             $query->where('status', 'published');
@@ -67,6 +67,7 @@ class PostController extends Controller
 
         $post = Post::create([
             'user_id' => $request->user()->id,
+            'category_id' => $validated['category_id'],
             'title' => $validated['title'],
             'slug' => Str::slug($validated['title']) . '-' . time(),
             'content' => $validated['content'],
@@ -75,7 +76,7 @@ class PostController extends Controller
             'rejection_reason' => null,
         ]);
 
-        $post->load('user');
+        $post->load(['user', 'category']);
 
         return response()->json([
             'message' => $validated['status'] === 'draft'
@@ -90,7 +91,7 @@ class PostController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $post = Post::with('user')->findOrFail($id);
+        $post = Post::with(['user', 'category'])->findOrFail($id);
 
         return response()->json([
             'message' => 'Yazı başarıyla getirildi.',
@@ -129,12 +130,13 @@ class PostController extends Controller
             'title' => $validated['title'],
             'slug' => Str::slug($validated['title']) . '-' . time(),
             'content' => $validated['content'],
+            'category_id' => $validated['category_id'],
             'featured_image' => $imagePath,
             'status' => $validated['status'],
             'rejection_reason' => null,
         ]);
 
-        $post->load('user');
+        $post->load(['user', 'category']);
 
         return response()->json([
             'message' => $validated['status'] === 'draft'
@@ -145,7 +147,7 @@ class PostController extends Controller
     }
     public function myPosts(Request $request): JsonResponse
     {
-        $posts = Post::with('user')
+        $posts = Post::with(['user', 'category'])
            ->where('user_id', $request->user()->id)
            ->latest()
            ->get();
@@ -160,7 +162,7 @@ class PostController extends Controller
  */
     public function pending(): JsonResponse
     {
-        $posts = Post::with('user')
+        $posts = Post::with(['user', 'category'])
            ->where('status', 'pending')
            ->latest()
            ->get();
@@ -183,6 +185,8 @@ class PostController extends Controller
             'rejection_reason' => null,
             ]);
 
+            $post->load(['user', 'category']);
+
         return response()->json([
             'message' => 'Yazı başarıyla onaylandı.',
             'post' => new PostResource($post),
@@ -203,7 +207,7 @@ class PostController extends Controller
             'rejection_reason' => $request->validated()['rejection_reason'],
         ]);
     
-        $post->load('user');
+        $post->load(['user', 'category']);
     
         return response()->json([
             'message' => 'Yazı reddedildi.',
