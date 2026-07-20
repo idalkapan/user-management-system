@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\CategoryController as PublicCategoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -98,14 +99,22 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::get('/posts', [PostController::class, 'index']);
+Route::middleware('auth:sanctum')->get(
+    '/categories',
+    [PublicCategoryController::class, 'index']
+);
+
+Route::middleware('auth:sanctum')->get(
+    '/posts',
+    [PostController::class, 'index']
+);
 
 Route::middleware('auth:sanctum')->post(
     '/posts',
     [PostController::class, 'store']
 );
 
-Route::get(
+Route::middleware('auth:sanctum')->get(
     '/posts/{id}',
     [PostController::class, 'show']
 );

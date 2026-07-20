@@ -38,6 +38,16 @@ class PostController extends Controller
                  ->orWhere('content', 'like', '%' . $search . '%');
                  });
                  }
+            if ($request->filled('category')) {
+                $categorySlug = $request->input('category');
+                
+                $query->whereHas('category', function ($query) use ($categorySlug) {
+                     $query
+                      ->where('slug', $categorySlug)
+                      ->where('is_active', true);
+                });
+                }
+                
         $posts = $query
             ->latest()
             ->get();
