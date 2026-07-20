@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Api\PostController;
@@ -83,6 +84,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
         '/admin/posts/{id}/reject',
         [PostController::class, 'reject']
     );
+
+    Route::get('/admin/categories', [CategoryController::class, 'index']);
+    Route::post('/admin/categories', [CategoryController::class, 'store']);
+    Route::put('/admin/categories/{category}', [CategoryController::class, 'update']);
+    Route::patch('/admin/categories/{category}/status', [CategoryController::class, 'updateStatus']);
+    Route::delete('/admin/categories/{category}', [CategoryController::class, 'destroy']);
 });
 
 /*
