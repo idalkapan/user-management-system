@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\PostInteractionController;
 use App\Http\Controllers\Api\CategoryController as PublicCategoryController;
 
 /*
@@ -121,6 +122,11 @@ Route::middleware('auth:sanctum')->post(
 Route::middleware('auth:sanctum')->get(
     '/posts/{id}',
     [PostController::class, 'show']
+);
+
+Route::middleware('auth:sanctum')->post(
+    '/posts/{post}/views',
+    [PostInteractionController::class, 'recordView']
 );
 
 Route::middleware('auth:sanctum')->put(

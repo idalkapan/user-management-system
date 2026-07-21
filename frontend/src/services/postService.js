@@ -8,6 +8,10 @@ export const getPost = (id) => {
   return api.get(`/posts/${id}`)
 }
 
+export const recordView = (postId) => {
+  return api.post(`/posts/${postId}/views`)
+}
+
 export const getMyPosts = () => {
   return api.get('/my-posts')
 }

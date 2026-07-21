@@ -23,7 +23,7 @@ class PostController extends Controller
     {
         $user = $request->user();
 
-        $query = Post::with(['user', 'category']);
+        $query = Post::with(['user', 'category'])->withCount('views');
 
         if (!$user || $user->role !== 'admin') {
             $query->where('status', 'published');
@@ -87,6 +87,7 @@ class PostController extends Controller
         ]);
 
         $post->load(['user', 'category']);
+        $post->loadCount('views');
 
         return response()->json([
             'message' => $validated['status'] === 'draft'
@@ -101,7 +102,9 @@ class PostController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $post = Post::with(['user', 'category'])->findOrFail($id);
+        $post = Post::with(['user', 'category'])
+            ->withCount('views')
+            ->findOrFail($id);
 
         return response()->json([
             'message' => 'Yazı başarıyla getirildi.',
@@ -147,6 +150,7 @@ class PostController extends Controller
         ]);
 
         $post->load(['user', 'category']);
+        $post->loadCount('views');
 
         return response()->json([
             'message' => $validated['status'] === 'draft'
@@ -158,6 +162,7 @@ class PostController extends Controller
     public function myPosts(Request $request): JsonResponse
     {
         $posts = Post::with(['user', 'category'])
+           ->withCount('views')
            ->where('user_id', $request->user()->id)
            ->latest()
            ->get();
@@ -173,6 +178,7 @@ class PostController extends Controller
     public function pending(): JsonResponse
     {
         $posts = Post::with(['user', 'category'])
+           ->withCount('views')
            ->where('status', 'pending')
            ->latest()
            ->get();
@@ -196,6 +202,7 @@ class PostController extends Controller
             ]);
 
             $post->load(['user', 'category']);
+            $post->loadCount('views');
 
         return response()->json([
             'message' => 'Yazı başarıyla onaylandı.',
@@ -218,6 +225,7 @@ class PostController extends Controller
         ]);
     
         $post->load(['user', 'category']);
+        $post->loadCount('views');
     
         return response()->json([
             'message' => 'Yazı reddedildi.',

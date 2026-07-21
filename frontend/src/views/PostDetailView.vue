@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../services/api'
+import { recordView } from '../services/postService'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,6 +25,8 @@ const loadPost = async () => {
     console.log('Detay yazısı:', post.value)
     console.log('Resim yolu:', post.value.featured_image)
 
+    await recordPostView()
+
   } catch (error) {
     console.error('Yazı alınamadı:', error)
 
@@ -32,6 +35,22 @@ const loadPost = async () => {
       'Blog yazısı görüntülenirken bir hata oluştu.'
   } finally {
     isLoading.value = false
+  }
+}
+
+const recordPostView = async () => {
+  if (!post.value?.id) {
+    return
+  }
+
+  if (post.value.status !== 'published') {
+    return
+  }
+
+  try {
+    await recordView(post.value.id)
+  } catch (error) {
+    console.debug('Görüntülenme kaydı:', error.response?.status)
   }
 }
 
@@ -218,6 +237,14 @@ onMounted(() => {
 
               <strong>
                 {{ formatDate(post.created_at) }}
+              </strong>
+            </div>
+
+            <div class="views-information">
+              <span class="information-label">Görüntülenme</span>
+
+              <strong>
+                👁️ {{ post.views_count ?? 0 }} görüntülenme
               </strong>
             </div>
           </div>
@@ -470,7 +497,8 @@ onMounted(() => {
 }
 
 .author-information div,
-.date-information {
+.date-information,
+.views-information {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -482,7 +510,8 @@ onMounted(() => {
 }
 
 .author-information strong,
-.date-information strong {
+.date-information strong,
+.views-information strong {
   color: #4a5568;
   font-size: 0.825rem;
   font-weight: 600;

@@ -164,10 +164,6 @@ const getStatusLabel = (status) => {
   return 'Durum belirtilmemiş'
 }
 
-const getAuthorName = (post) => {
-  return post.author?.name || post.user?.name || 'Bilinmeyen yazar'
-}
-
 const formatDate = (date) => {
   if (!date) {
     return 'Tarih belirtilmemiş'
@@ -412,10 +408,6 @@ onMounted(async () => {
                 >
                   {{ getStatusLabel(post.status) }}
                 </span>
-
-                <span class="post-date">
-                  {{ formatDate(post.created_at) }}
-                </span>
               </div>
 
               <h3 class="post-title">
@@ -441,18 +433,17 @@ onMounted(async () => {
               </div>
 
               <div class="post-meta">
-                <span class="author-avatar">
-                  {{
-                    getAuthorName(post)
-                      .charAt(0)
-                      .toUpperCase()
-                  }}
+                <span class="meta-item">
+                  👤 {{ post.user?.name }}
                 </span>
 
-                <div>
-                  <span class="meta-label">Yazar</span>
-                  <strong>{{ getAuthorName(post) }}</strong>
-                </div>
+                <span class="meta-item">
+                  👁️ {{ post.views_count ?? 0 }}
+                </span>
+
+                <span class="meta-item">
+                  📅 {{ formatDate(post.created_at) }}
+                </span>
               </div>
             </div>
 
@@ -929,11 +920,6 @@ onMounted(async () => {
   background-color: #fee2e2;
 }
 
-.post-date {
-  color: #a0aec0;
-  font-size: 0.75rem;
-}
-
 .post-title {
   margin: 0;
   color: #1a1a2e;
@@ -989,34 +975,15 @@ onMounted(async () => {
 .post-meta {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  flex-wrap: wrap;
+  gap: 1.25rem;
 }
 
-.author-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  color: #ffffff;
-  background-color: #4f6ef7;
-  border-radius: 50%;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.meta-label {
-  display: block;
-  margin-bottom: 0.1rem;
-  color: #a0aec0;
-  font-size: 0.7rem;
-}
-
-.post-meta strong {
+.meta-item {
   color: #4a5568;
   font-size: 0.8rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .post-actions {

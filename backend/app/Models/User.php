@@ -40,5 +40,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Category::class, 'created_by');
     }
+
+    public function postViews(): HasMany
+    {
+        return $this->hasMany(PostView::class);
+    }
 }
 
