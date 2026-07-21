@@ -8,6 +8,10 @@ export const getAdminCategories = () => {
   return api.get('/admin/categories')
 }
 
+export const getCategoryPosts = (id) => {
+  return api.get(`/admin/categories/${id}/posts`)
+}
+
 export const createCategory = (data) => {
   return api.post('/admin/categories', data)
 }
@@ -24,4 +28,8 @@ export const updateCategoryStatus = (id, isActive) => {
 
 export const deleteCategory = (id) => {
   return api.delete(`/admin/categories/${id}`)
+}
+
+export const restoreCategory = (id) => {
+  return api.post(`/admin/categories/${id}/restore`)
 }

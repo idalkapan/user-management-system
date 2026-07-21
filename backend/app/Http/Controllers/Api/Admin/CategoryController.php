@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
+use App\Http\Resources\PostResource;
 use App\Models\Category;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,6 +37,21 @@ class CategoryController extends Controller
     public function store(StoreCategoryRequest $request): JsonResponse
     {
         $validated = $request->validated();
+
+        $trashedCategory = Category::onlyTrashed()
+            ->where('name', $validated['name'])
+            ->first();
+
+        if ($trashedCategory) {
+            return response()->json([
+                'message' => 'Bu isimde silinmiş bir kategori bulunuyor. Geri yükleyebilirsiniz.',
+                'requires_restore' => true,
+                'category' => [
+                    'id' => $trashedCategory->id,
+                    'name' => $trashedCategory->name,
+                ],
+            ], 409);
+        }
 
         $category = Category::create([
             'name' => $validated['name'],
@@ -119,6 +135,48 @@ class CategoryController extends Controller
             'message' => $validated['is_active']
                 ? 'Kategori başarıyla aktif edildi.'
                 : 'Kategori başarıyla pasif edildi.',
+            'category' => new CategoryResource($category),
+        ]);
+    }
+
+    /**
+     * Kategoriye ait yazıları listeler.
+     */
+    public function posts(Category $category): JsonResponse
+    {
+        $posts = $category->posts()
+            ->with(['user', 'category'])
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'message' => 'Kategoriye ait yazılar başarıyla listelendi.',
+            'posts' => PostResource::collection($posts),
+        ]);
+    }
+
+    /**
+     * Soft delete edilmiş kategoriyi geri yükler.
+     */
+    public function restore(Category $category): JsonResponse
+    {
+        if (!$category->trashed()) {
+            return response()->json([
+                'message' => 'Bu kategori zaten aktif durumda.',
+            ], 422);
+        }
+
+        $category->restore();
+
+        $category->update([
+            'is_active' => true,
+        ]);
+
+        $category->load('creator');
+        $category->loadCount('posts');
+
+        return response()->json([
+            'message' => 'Kategori başarıyla geri yüklendi.',
             'category' => new CategoryResource($category),
         ]);
     }

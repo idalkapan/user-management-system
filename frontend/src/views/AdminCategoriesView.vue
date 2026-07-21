@@ -1,20 +1,23 @@
 <template>
   <div class="admin-categories-page">
     <div class="admin-categories-container">
-      <header class="page-header">
-        <div class="page-header-text">
-          <h1>Kategori Yönetimi</h1>
-          <p>Blog yazılarınız için kategorileri buradan oluşturabilir ve yönetebilirsiniz.</p>
-        </div>
+      <header class="page-hero">
+        <div class="page-header">
+          <div class="page-header-text">
+            <span class="page-eyebrow">Yönetim Paneli</span>
+            <h1>Kategori Yönetimi</h1>
+            <p>Blog yazılarınız için kategorileri buradan oluşturabilir ve yönetebilirsiniz.</p>
+          </div>
 
-        <button
-          type="button"
-          class="primary-button"
-          :disabled="isSubmitting"
-          @click="openCreateModal"
-        >
-          Yeni Kategori Ekle
-        </button>
+          <button
+            type="button"
+            class="primary-button"
+            :disabled="isSubmitting"
+            @click="openCreateModal"
+          >
+            Yeni Kategori Ekle
+          </button>
+        </div>
       </header>
 
       <div
@@ -34,6 +37,13 @@
       </div>
 
       <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Kategori Listesi</h2>
+            <p>Tüm kategorileri görüntüleyin ve yönetin.</p>
+          </div>
+        </div>
+
         <div
           v-if="isLoading"
           class="loading-state"
@@ -81,7 +91,13 @@
                 </td>
 
                 <td data-label="Yazı Sayısı">
-                  {{ category.posts_count ?? 0 }}
+                  <button
+                    type="button"
+                    class="posts-count-button"
+                    @click="openCategoryPostsModal(category)"
+                  >
+                    {{ category.posts_count ?? 0 }}
+                  </button>
                 </td>
 
                 <td data-label="Durum">
@@ -146,6 +162,35 @@
           </table>
         </div>
       </section>
+
+      <nav
+        class="admin-nav admin-nav-bottom"
+        aria-label="Yönetim navigasyonu"
+      >
+        <RouterLink
+          to="/admin/posts"
+          class="admin-nav-link"
+          active-class="is-active"
+        >
+          Yazılar
+        </RouterLink>
+
+        <RouterLink
+          to="/admin/categories"
+          class="admin-nav-link"
+          active-class="is-active"
+        >
+          Kategoriler
+        </RouterLink>
+
+        <RouterLink
+          to="/profile"
+          class="admin-nav-link"
+          active-class="is-active"
+        >
+          Profilim
+        </RouterLink>
+      </nav>
     </div>
 
     <!-- Oluşturma / Düzenleme Modal -->
@@ -293,6 +338,165 @@
         </div>
       </div>
     </div>
+
+    <!-- Geri Yükleme Onay Modal -->
+    <div
+      v-if="isRestoreModalOpen"
+      class="modal-overlay"
+      @click.self="closeRestoreModal"
+    >
+      <div
+        class="modal modal-restore"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="restore-category-title"
+      >
+        <div class="modal-header">
+          <h2 id="restore-category-title">
+            Kategoriyi Geri Yükle
+          </h2>
+          <button
+            type="button"
+            class="modal-close"
+            :disabled="isRestoring"
+            aria-label="Kapat"
+            @click="closeRestoreModal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <p class="delete-message">
+            <strong>{{ categoryToRestore?.name }}</strong>
+            adlı silinmiş bir kategori bulundu. Geri yüklemek ister misiniz?
+          </p>
+
+          <p
+            v-if="restoreModalError"
+            class="delete-error"
+          >
+            {{ restoreModalError }}
+          </p>
+
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="secondary-button"
+              :disabled="isRestoring"
+              @click="closeRestoreModal"
+            >
+              Vazgeç
+            </button>
+
+            <button
+              type="button"
+              class="primary-button"
+              :disabled="isRestoring"
+              @click="confirmRestore"
+            >
+              {{ isRestoring ? 'Geri Yükleniyor...' : 'Geri Yükle' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kategori Yazıları Modal -->
+    <div
+      v-if="isPostsModalOpen"
+      class="modal-overlay"
+      @click.self="closeCategoryPostsModal"
+    >
+      <div
+        class="modal modal-posts"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="category-posts-title"
+      >
+        <div class="modal-header">
+          <h2 id="category-posts-title">
+            {{ selectedCategory?.name }} — Yazılar
+          </h2>
+          <button
+            type="button"
+            class="modal-close"
+            aria-label="Kapat"
+            @click="closeCategoryPostsModal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div
+            v-if="isPostsLoading"
+            class="loading-state modal-loading-state"
+          >
+            Yazılar yükleniyor...
+          </div>
+
+          <div
+            v-else-if="postsModalError"
+            class="delete-error"
+          >
+            {{ postsModalError }}
+          </div>
+
+          <div
+            v-else-if="categoryPosts.length === 0"
+            class="empty-state modal-empty-state"
+          >
+            <h2>Bu kategoride henüz yazı bulunmuyor.</h2>
+            <p>Kategoriye bağlı yazılar eklendiğinde burada listelenecek.</p>
+          </div>
+
+          <div
+            v-else
+            class="table-wrapper"
+          >
+            <table class="categories-table posts-table">
+              <thead>
+                <tr>
+                  <th>Başlık</th>
+                  <th>Durum</th>
+                  <th>Yazar</th>
+                  <th>Oluşturulma Tarihi</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr
+                  v-for="post in categoryPosts"
+                  :key="post.id"
+                >
+                  <td
+                    data-label="Başlık"
+                    class="category-name"
+                  >
+                    {{ post.title }}
+                  </td>
+
+                  <td data-label="Durum">
+                    <span class="post-status-badge">
+                      {{ getStatusLabel(post.status) }}
+                    </span>
+                  </td>
+
+                  <td data-label="Yazar">
+                    {{ getAuthorName(post) }}
+                  </td>
+
+                  <td data-label="Oluşturulma Tarihi">
+                    {{ formatDate(post.created_at) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -302,6 +506,8 @@ import {
   createCategory,
   deleteCategory,
   getAdminCategories,
+  getCategoryPosts,
+  restoreCategory,
   updateCategory,
   updateCategoryStatus,
 } from '../services/categoryService'
@@ -319,6 +525,17 @@ const categoryToDelete = ref(null)
 const isSubmitting = ref(false)
 const isDeleting = ref(false)
 const statusUpdatingId = ref(null)
+
+const isPostsModalOpen = ref(false)
+const isPostsLoading = ref(false)
+const postsModalError = ref('')
+const selectedCategory = ref(null)
+const categoryPosts = ref([])
+
+const isRestoreModalOpen = ref(false)
+const isRestoring = ref(false)
+const restoreModalError = ref('')
+const categoryToRestore = ref(null)
 
 const defaultForm = () => ({
   name: '',
@@ -433,8 +650,22 @@ const submitForm = async () => {
   } catch (error) {
     console.error('Kategori kaydedilemedi:', error)
 
+    const responseData = error.response?.data
+
+    if (
+      !editingCategoryId.value
+      && error.response?.status === 409
+      && responseData?.requires_restore
+      && responseData?.category?.id
+    ) {
+      categoryToRestore.value = responseData.category
+      restoreModalError.value = ''
+      isRestoreModalOpen.value = true
+      return
+    }
+
     errorMessage.value =
-      error.response?.data?.message ??
+      responseData?.message ??
       (editingCategoryId.value
         ? 'Kategori güncellenemedi.'
         : 'Kategori oluşturulamadı.')
@@ -524,6 +755,106 @@ const confirmDelete = async () => {
   }
 }
 
+const closeRestoreModal = () => {
+  if (isRestoring.value) {
+    return
+  }
+
+  isRestoreModalOpen.value = false
+  categoryToRestore.value = null
+  restoreModalError.value = ''
+}
+
+const confirmRestore = async () => {
+  if (!categoryToRestore.value?.id || isRestoring.value) {
+    return
+  }
+
+  restoreModalError.value = ''
+  isRestoring.value = true
+
+  try {
+    const response = await restoreCategory(categoryToRestore.value.id)
+
+    successMessage.value =
+      response.data.message ?? 'Kategori başarıyla geri yüklendi.'
+
+    isRestoreModalOpen.value = false
+    categoryToRestore.value = null
+    isFormModalOpen.value = false
+    editingCategoryId.value = null
+    resetForm()
+    await loadCategories()
+  } catch (error) {
+    console.error('Kategori geri yüklenemedi:', error)
+
+    restoreModalError.value =
+      error.response?.data?.message ??
+      'Kategori geri yüklenemedi.'
+  } finally {
+    isRestoring.value = false
+  }
+}
+
+const formatDate = (date) => {
+  if (!date) {
+    return '—'
+  }
+
+  return new Intl.DateTimeFormat('tr-TR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(date))
+}
+
+const getAuthorName = (post) => {
+  return post.author?.name ?? post.user?.name ?? '—'
+}
+
+const getStatusLabel = (status) => {
+  const labels = {
+    draft: 'Taslak',
+    pending: 'Onay Bekliyor',
+    published: 'Yayında',
+    rejected: 'Reddedildi',
+  }
+
+  return labels[status] ?? status
+}
+
+const openCategoryPostsModal = async (category) => {
+  selectedCategory.value = category
+  isPostsModalOpen.value = true
+  isPostsLoading.value = true
+  postsModalError.value = ''
+  categoryPosts.value = []
+
+  try {
+    const response = await getCategoryPosts(category.id)
+
+    categoryPosts.value =
+      response.data.posts ??
+      response.data.data ??
+      []
+  } catch (error) {
+    console.error('Kategori yazıları alınamadı:', error)
+
+    postsModalError.value =
+      error.response?.data?.message ??
+      'Kategori yazıları yüklenemedi.'
+  } finally {
+    isPostsLoading.value = false
+  }
+}
+
+const closeCategoryPostsModal = () => {
+  isPostsModalOpen.value = false
+  selectedCategory.value = null
+  categoryPosts.value = []
+  postsModalError.value = ''
+}
+
 onMounted(() => {
   loadCategories()
 })
@@ -532,39 +863,113 @@ onMounted(() => {
 <style scoped>
 .admin-categories-page {
   min-height: 100vh;
-  padding: 2rem 1.5rem;
-  background-color: #f0f4f8;
+  padding: 2rem 1.5rem 7rem;
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.08), transparent 28%),
+    linear-gradient(180deg, #eef2f7 0%, #f0f4f8 100%);
 }
 
 .admin-categories-container {
-  max-width: 1150px;
+  max-width: 1200px;
   margin: 0 auto;
+}
+
+.page-hero {
+  padding: 1.75rem 1.75rem 1.5rem;
+  margin-bottom: 1.25rem;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+}
+
+.page-eyebrow {
+  display: inline-block;
+  margin-bottom: 0.65rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background-color: #eef2ff;
+  color: #4338ca;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1.25rem;
+  background-color: rgba(255, 255, 255, 0.96);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.admin-nav-bottom {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  z-index: 200;
+  width: calc(100% - 2rem);
+  max-width: 520px;
+  transform: translateX(-50%);
+}
+
+.admin-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 7.5rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 10px;
+  color: #475569;
+  font-size: 0.925rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.admin-nav-link:hover {
+  color: #1e293b;
+  background-color: #f1f5f9;
+}
+
+.admin-nav-link.is-active {
+  color: #4338ca;
+  background-color: #eef2ff;
+  box-shadow: inset 0 0 0 1px #c7d2fe;
 }
 
 .page-header {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 1.5rem;
-  margin-bottom: 1.5rem;
 }
 
 .page-header h1 {
   margin: 0;
-  font-size: 2rem;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.15;
   color: #1a1a2e;
 }
 
 .page-header p {
-  margin: 0.5rem 0 0;
+  margin: 0.75rem 0 0;
   color: #718096;
-  max-width: 560px;
+  max-width: 620px;
+  line-height: 1.6;
 }
 
 .alert {
-  padding: 0.95rem 1.1rem;
+  padding: 0.95rem 1.15rem;
   margin-bottom: 1rem;
-  border-radius: 10px;
+  border-radius: 12px;
   font-weight: 500;
 }
 
@@ -583,14 +988,36 @@ onMounted(() => {
 .panel {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
   overflow: hidden;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #1e293b;
+}
+
+.panel-head p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.92rem;
 }
 
 .loading-state,
 .empty-state {
-  padding: 3rem 2rem;
+  padding: 4rem 2rem;
   text-align: center;
   color: #64748b;
 }
@@ -620,27 +1047,51 @@ onMounted(() => {
 
 .categories-table th,
 .categories-table td {
-  padding: 1rem 1.25rem;
+  padding: 1.05rem 1.5rem;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
   vertical-align: middle;
 }
 
 .categories-table th {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #64748b;
+}
+
+.categories-table tbody tr {
+  transition: background-color 0.2s ease;
 }
 
 .categories-table tbody tr:hover {
   background-color: #f8fafc;
 }
 
+.categories-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .category-name {
   font-weight: 600;
   color: #1e293b;
+}
+
+.posts-count-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #4338ca;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.posts-count-button:hover {
+  color: #3730a3;
 }
 
 .status-badge {
@@ -674,21 +1125,23 @@ onMounted(() => {
 .danger-button,
 .action-button {
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease, opacity 0.2s ease;
+  transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
 }
 
 .primary-button {
-  padding: 0.75rem 1.15rem;
+  padding: 0.8rem 1.25rem;
   color: #ffffff;
-  background-color: #4f46e5;
+  background: linear-gradient(180deg, #4f46e5 0%, #4338ca 100%);
   white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.22);
 }
 
 .primary-button:hover:not(:disabled) {
-  background-color: #4338ca;
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, #4338ca 0%, #3730a3 100%);
 }
 
 .secondary-button {
@@ -749,6 +1202,7 @@ onMounted(() => {
 .action-button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+  transform: none;
 }
 
 .modal-overlay {
@@ -772,6 +1226,31 @@ onMounted(() => {
 
 .modal-delete {
   max-width: 460px;
+}
+
+.modal-restore {
+  max-width: 460px;
+}
+
+.modal-posts {
+  max-width: 860px;
+}
+
+.modal-loading-state,
+.modal-empty-state {
+  padding: 2.5rem 1.5rem;
+}
+
+.post-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  background-color: #eef2ff;
+  color: #4338ca;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .modal-header {
@@ -861,6 +1340,7 @@ onMounted(() => {
   color: #64748b;
   font-size: 0.95rem;
 }
+
 .delete-error {
   margin-top: 1rem;
   padding: 0.85rem;
@@ -871,6 +1351,31 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .admin-categories-page {
+    padding: 1.25rem 1rem 8.5rem;
+  }
+
+  .page-hero {
+    padding: 1.25rem;
+  }
+
+  .admin-nav-bottom {
+    bottom: 0.75rem;
+    width: calc(100% - 1rem);
+    max-width: none;
+    padding: 0.75rem;
+  }
+
+  .admin-nav {
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .admin-nav-link {
+    width: 100%;
+    min-width: 0;
+  }
+
   .page-header {
     flex-direction: column;
     align-items: stretch;
@@ -878,6 +1383,10 @@ onMounted(() => {
 
   .primary-button {
     width: 100%;
+  }
+
+  .panel-head {
+    padding: 1rem 1.15rem;
   }
 
   .categories-table thead {
@@ -929,6 +1438,5 @@ onMounted(() => {
   .action-button {
     width: 100%;
   }
-
 }
 </style>

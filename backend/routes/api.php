@@ -90,6 +90,10 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/admin/categories', [CategoryController::class, 'store']);
     Route::put('/admin/categories/{category}', [CategoryController::class, 'update']);
     Route::patch('/admin/categories/{category}/status', [CategoryController::class, 'updateStatus']);
+    Route::get('/admin/categories/{category}/posts', [CategoryController::class, 'posts']);
+    Route::post('/admin/categories/{category}/restore', [CategoryController::class, 'restore'])
+        ->withTrashed()
+        ->name('admin.categories.restore');
     Route::delete('/admin/categories/{category}', [CategoryController::class, 'destroy']);
 });
 
