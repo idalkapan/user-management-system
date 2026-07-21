@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../services/api'
+import { getCategories } from '../services/categoryService'
 
 const router = useRouter()
 const route = useRoute()
@@ -10,6 +11,7 @@ const postId = route.params.id
 const form = reactive({
   title: '',
   content: '',
+  category_id: '',
   status: 'draft',
 })
 
@@ -17,11 +19,22 @@ const selectedImage = ref(null)
 const imagePreviewUrl = ref('')
 const imageInput = ref(null)
 
+const categories = ref([])
+
 const errors = reactive({})
 
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 const isLoading = ref(true)
+
+const loadCategories = async () => {
+  try {
+    const response = await getCategories()
+    categories.value = response.data.categories
+  } catch (error) {
+    console.error('Kategoriler yüklenemedi:', error)
+  }
+}
 
 const loadPost = async () => {
   isLoading.value = true
@@ -37,6 +50,10 @@ const loadPost = async () => {
 
     form.title = post.title ?? ''
     form.content = post.content ?? ''
+    form.category_id =
+      post.category_id ??
+      post.category?.id ??
+      ''
     form.status =
       post.status === 'draft' ? 'draft' : 'pending'
 
@@ -132,6 +149,7 @@ const updatePost = async () => {
 
     formData.append('title', form.title)
     formData.append('content', form.content)
+    formData.append('category_id', form.category_id)
     formData.append('status', form.status)
 
     if (selectedImage.value) {
@@ -174,9 +192,11 @@ const updatePost = async () => {
 const goBack = () => {
   router.push('/my-posts')
 }
-  onMounted(() => {
-    loadPost()
-    })
+
+onMounted(async () => {
+  await loadCategories()
+  await loadPost()
+})
 </script>
 
 <template>
@@ -281,6 +301,36 @@ const goBack = () => {
               {{ errors.content[0] }}
             </p>
           </div>
+
+          <div class="form-group">
+  <label for="category">
+    Kategori
+    <span class="required-mark">*</span>
+  </label>
+
+  <select
+    id="category"
+    v-model="form.category_id"
+    :class="{ 'input-error': errors.category_id }"
+  >
+    <option value="">Kategori Seçiniz</option>
+
+    <option
+      v-for="category in categories"
+      :key="category.id"
+      :value="category.id"
+    >
+      {{ category.name }}
+    </option>
+  </select>
+
+  <p
+    v-if="errors.category_id"
+    class="field-error"
+  >
+    {{ errors.category_id[0] }}
+  </p>
+</div>
         </section>
 
         <section class="form-card">
@@ -597,6 +647,7 @@ const goBack = () => {
 }
 
 .form-group input[type='text'],
+.form-group select,
 .form-group textarea {
   width: 100%;
   padding: 0.8rem 1rem;
@@ -626,6 +677,7 @@ const goBack = () => {
 }
 
 .form-group input:focus,
+.form-group select:focus,
 .form-group textarea:focus {
   background-color: #ffffff;
   border-color: #4f6ef7;
@@ -633,6 +685,7 @@ const goBack = () => {
 }
 
 .form-group input.input-error,
+.form-group select.input-error,
 .form-group textarea.input-error {
   background-color: #fffafa;
   border-color: #e53e3e;

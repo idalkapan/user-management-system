@@ -136,29 +136,37 @@ onMounted(() => {
   <div class="admin-posts-page">
     <div class="admin-posts-container">
       <header class="page-header">
-        <div>
-          <button
-            type="button"
-            class="back-button"
-            @click="goToProfile"
-          >
-            ← Profile Dön
-          </button>
+  <div>
+    <button
+      type="button"
+      class="back-button"
+      @click="goToProfile"
+    >
+      ← Profile Dön
+    </button>
 
-          <h1>Admin Paneli</h1>
-          <p>Onay bekleyen blog yazılarını inceleyin ve yönetin.</p>
-        </div>
+    <h1>Admin Paneli</h1>
+    <p>Onay bekleyen blog yazılarını inceleyin ve yönetin.</p>
+  </div>
 
-        <button
-          type="button"
-          class="refresh-button"
-          :disabled="isLoading"
-          @click="loadPendingPosts"
-        >
-          {{ isLoading ? 'Yenileniyor...' : 'Yenile' }}
-        </button>
-      </header>
+  <div class="header-actions">
+    <RouterLink
+      to="/admin/categories"
+      class="category-management-link"
+    >
+      Kategori Yönetimi
+    </RouterLink>
 
+    <button
+      type="button"
+      class="refresh-button"
+      :disabled="isLoading"
+      @click="loadPendingPosts"
+    >
+      {{ isLoading ? 'Yenileniyor...' : 'Yenile' }}
+    </button>
+  </div>
+</header>
       <div
          v-if="successMessage"
          class="alert alert-success"
@@ -316,6 +324,28 @@ onMounted(() => {
   border: none;
   font-weight: 600;
   cursor: pointer;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.category-management-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  color: #ffffff;
+  background-color: #4f46e5;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.category-management-link:hover {
+  background-color: #4338ca;
 }
 
 .refresh-button {
@@ -518,6 +548,17 @@ onMounted(() => {
   .post-card {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .category-management-link,
+  .refresh-button {
+    justify-content: center;
+    text-align: center;
   }
 
   .post-actions {

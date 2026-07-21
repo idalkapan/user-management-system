@@ -422,6 +422,13 @@ onMounted(async () => {
                 {{ post.title }}
               </h3>
 
+              <span
+                v-if="post.category"
+                class="category-badge"
+              >
+                {{ post.category.name }}
+              </span>
+
               <p class="post-content">
                 {{ post.content }}
               </p>
@@ -933,6 +940,18 @@ onMounted(async () => {
   font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.4;
+}
+
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.55rem;
+  padding: 0.3rem 0.65rem;
+  color: #4338ca;
+  background-color: #eef2ff;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .post-content {

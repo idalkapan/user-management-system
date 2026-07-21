@@ -192,6 +192,13 @@ onMounted(() => {
             {{ post.title }}
           </h1>
 
+          <span
+             v-if="post.category"
+             class="category-badge"
+          >
+             {{ post.category.name }}
+          </span>
+
           <div class="post-information">
             <div class="author-information">
               <span class="author-avatar">
@@ -419,6 +426,18 @@ onMounted(() => {
   line-height: 1.3;
   letter-spacing: -0.03em;
   word-break: break-word;
+}
+
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.8rem;
+  padding: 0.35rem 0.75rem;
+  color: #4338ca;
+  background-color: #eef2ff;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .post-information {

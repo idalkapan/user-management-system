@@ -13,6 +13,8 @@ import MyPostsView from '../views/MyPostsView.vue'
 import AdminPostsView from '../views/AdminPostsView.vue'
 import PostEditView from '../views/PostEditView.vue'
 
+import AdminCategoriesView from '../views/AdminCategoriesView.vue'
+
 const router = createRouter({
   history: createWebHistory(),
 
@@ -56,6 +58,17 @@ const router = createRouter({
         requiresAdmin: true,
       },
     },
+
+    {
+      path: '/admin/categories',
+      name: 'admin-categories',
+      component: AdminCategoriesView,
+      meta: {
+        requiresAuth: true,
+        requiresAdmin: true,
+      },
+    },
+    
     {
       path: '/posts/create',
       name: 'post-create',

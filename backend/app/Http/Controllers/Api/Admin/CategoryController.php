@@ -41,8 +41,8 @@ class CategoryController extends Controller
             'name' => $validated['name'],
             'slug' => $this->generateUniqueSlug($validated['name']),
             'description' => $validated['description'] ?? null,
-            'is_active' => $validated['is_active'],
-            'sort_order' => $validated['sort_order'],
+            'is_active' => $validated['is_active'] ?? true,
+            'sort_order' => $validated['sort_order'] ?? 0,
             'created_by' => $request->user()->id,
         ]);
 

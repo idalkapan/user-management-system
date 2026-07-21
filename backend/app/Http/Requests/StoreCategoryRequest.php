@@ -25,8 +25,8 @@ class StoreCategoryRequest extends FormRequest
         return [
             'name' => 'required|string|max:100|unique:categories,name',
             'description' => 'nullable|string|max:500',
-            'sort_order' => 'required|integer|min:0',
-            'is_active' => 'required|boolean',
+            'sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
         ];
     }
 
@@ -41,11 +41,10 @@ class StoreCategoryRequest extends FormRequest
             'description.string' => 'Açıklama metin formatında olmalıdır.',
             'description.max' => 'Açıklama en fazla 500 karakter olabilir.',
 
-            'sort_order.required' => 'Sıralama değeri zorunludur.',
+            
             'sort_order.integer' => 'Sıralama değeri tam sayı olmalıdır.',
             'sort_order.min' => 'Sıralama değeri 0 veya daha büyük olmalıdır.',
-
-            'is_active.required' => 'Aktiflik durumu belirtilmelidir.',
+            
             'is_active.boolean' => 'Aktiflik durumu geçerli bir boolean değer olmalıdır.',
         ];
     }

@@ -8,6 +8,7 @@ const router = useRouter()
 
 const posts = ref([])
 const searchQuery = ref('')
+const selectedCategory = ref('')
 const isLoading = ref(true)
 const errorMessage = ref('')
 
@@ -36,6 +37,18 @@ const loadPosts = async () => {
   }
 }
 
+const categories = computed(() => {
+  const categoryMap = new Map()
+
+  posts.value.forEach((post) => {
+    if (post.category?.id && post.category?.name) {
+      categoryMap.set(post.category.id, post.category)
+    }
+  })
+
+  return Array.from(categoryMap.values())
+})
+
 const filteredPosts = computed(() => {
   const searchText = searchQuery.value.trim().toLocaleLowerCase('tr-TR')
 
@@ -43,10 +56,14 @@ const filteredPosts = computed(() => {
     const isPublished = post.status === 'published'
 
     const matchesSearch =
-      post.title?.toLocaleLowerCase('tr-TR').includes(searchText) ||
-      post.content?.toLocaleLowerCase('tr-TR').includes(searchText)
+       post.title?.toLocaleLowerCase('tr-TR').includes(searchText) ||
+       post.content?.toLocaleLowerCase('tr-TR').includes(searchText)
 
-    return isPublished && matchesSearch
+    const matchesCategory =
+       selectedCategory.value === '' ||
+       String(post.category?.id) === String(selectedCategory.value)
+
+    return isPublished && matchesSearch && matchesCategory
   })
 })
 
@@ -135,14 +152,35 @@ onMounted(() => {
           </button>
         </div>
 
-        <div class="search-box">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Başlık veya içerikte ara..."
-            class="search-input"
-          />
-        </div>
+        <div class="filter-section">
+  <div class="search-box">
+    <input
+      v-model="searchQuery"
+      type="text"
+      placeholder="Başlık veya içerikte ara..."
+      class="search-input"
+    />
+  </div>
+
+  <div class="category-filter">
+    <select
+      v-model="selectedCategory"
+      class="category-select"
+    >
+      <option value="">
+        Tüm Kategoriler
+      </option>
+
+      <option
+        v-for="category in categories"
+        :key="category.id"
+        :value="category.id"
+      >
+        {{ category.name }}
+      </option>
+    </select>
+  </div>
+</div>
 
         <div
           v-if="errorMessage"
@@ -215,6 +253,13 @@ onMounted(() => {
               <h3 class="post-title">
                 {{ post.title }}
               </h3>
+              
+              <span
+                v-if="post.category"
+                class="category-badge"
+              >
+                {{ post.category.name }}
+              </span>
 
               <p class="post-content">
                 {{ post.content }}
@@ -359,9 +404,34 @@ onMounted(() => {
   opacity: 0.6;
   cursor: not-allowed;
 }
+.filter-section {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
+}
+
+.category-filter {
+  min-width: 220px;
+}
+
+.category-select {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.category-select:focus {
+  border-color: #4f6ef7;
+}
 
 .search-box {
-  margin-bottom: 1.5rem;
+  flex: 1;
 }
 
 .search-input {
@@ -535,6 +605,18 @@ onMounted(() => {
   font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.4;
+}
+
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.55rem;
+  padding: 0.3rem 0.65rem;
+  color: #4338ca;
+  background-color: #eef2ff;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .post-content {
