@@ -30,3 +30,7 @@ export const deletePost = (id) => {
 export const getAdminDashboard = () => {
   return api.get('/admin/dashboard')
 }
+
+export const getMyStatistics = () => {
+  return api.get('/my-statistics')
+}

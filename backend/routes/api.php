@@ -147,3 +147,8 @@ Route::middleware('auth:sanctum')->get(
     '/my-posts',
     [PostController::class, 'myPosts']
 );
+
+Route::middleware('auth:sanctum')->get(
+    '/my-statistics',
+    [PostController::class, 'myStatistics']
+);

@@ -35,6 +35,13 @@
         </RouterLink>
 
         <RouterLink
+          to="/statistics"
+          class="sidebar-link"
+        >
+          İstatistikler
+        </RouterLink>
+
+        <RouterLink
           to="/profile"
           class="sidebar-link"
         >

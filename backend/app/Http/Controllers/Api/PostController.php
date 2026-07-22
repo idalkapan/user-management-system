@@ -16,6 +16,7 @@ use App\Http\Requests\RejectPostRequest;
 use App\Models\Category;
 use App\Models\PostView;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 
 class PostController extends Controller
 {
@@ -175,6 +176,167 @@ class PostController extends Controller
             'posts' => PostResource::collection($posts),
             ]);
     }
+
+    /**
+     * Giriş yapan kullanıcının yayınlanmış yazılarına ait istatistikleri döndürür.
+     */
+    public function myStatistics(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        $publishedPosts = Post::with('category')
+            ->withCount('views')
+            ->where('user_id', $userId)
+            ->where('status', 'published')
+            ->get();
+
+        $publishedPostsCount = $publishedPosts->count();
+        $totalViews = (int) $publishedPosts->sum('views_count');
+        $averageViews = $publishedPostsCount > 0
+            ? (int) round($totalViews / $publishedPostsCount)
+            : 0;
+
+        $categoriesCount = $publishedPosts
+            ->pluck('category_id')
+            ->filter()
+            ->unique()
+            ->count();
+
+        $chartStartDate = Carbon::today()->subDays(29);
+        $chartEndDate = Carbon::today();
+
+        $dailyViewCounts = PostView::query()
+            ->join('posts', 'post_views.post_id', '=', 'posts.id')
+            ->where('posts.user_id', $userId)
+            ->where('posts.status', 'published')
+            ->whereDate('post_views.created_at', '>=', $chartStartDate)
+            ->whereDate('post_views.created_at', '<=', $chartEndDate)
+            ->selectRaw('DATE(post_views.created_at) as view_date, COUNT(*) as views')
+            ->groupBy('view_date')
+            ->pluck('views', 'view_date');
+
+        $dailyViews = [];
+
+        for ($dayOffset = 0; $dayOffset < 30; $dayOffset++) {
+            $date = $chartStartDate->copy()->addDays($dayOffset)->format('Y-m-d');
+
+            $dailyViews[] = [
+                'date' => $date,
+                'views' => (int) ($dailyViewCounts[$date] ?? 0),
+            ];
+        }
+
+        $mostViewedPost = $publishedPosts
+            ->sort(function (Post $firstPost, Post $secondPost) {
+                if ($firstPost->views_count === $secondPost->views_count) {
+                    return $firstPost->id <=> $secondPost->id;
+                }
+
+                return $secondPost->views_count <=> $firstPost->views_count;
+            })
+            ->first();
+
+        $leastViewedPost = $publishedPosts
+            ->sort(function (Post $firstPost, Post $secondPost) {
+                if ($firstPost->views_count === $secondPost->views_count) {
+                    return $firstPost->created_at <=> $secondPost->created_at;
+                }
+
+                return $firstPost->views_count <=> $secondPost->views_count;
+            })
+            ->first();
+
+        $latestPublishedPost = $publishedPosts
+            ->sortByDesc('updated_at')
+            ->first();
+
+        $mostUsedCategory = null;
+        $categoryUsage = $publishedPosts
+            ->filter(fn (Post $post) => $post->category_id !== null && $post->category)
+            ->groupBy('category_id')
+            ->map(function ($postsInCategory) {
+                $category = $postsInCategory->first()->category;
+
+                return [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'posts_count' => $postsInCategory->count(),
+                ];
+            })
+            ->sort(function (array $firstCategory, array $secondCategory) {
+                if ($firstCategory['posts_count'] === $secondCategory['posts_count']) {
+                    return strcmp($firstCategory['name'], $secondCategory['name']);
+                }
+
+                return $secondCategory['posts_count'] <=> $firstCategory['posts_count'];
+            })
+            ->first();
+
+        if ($categoryUsage) {
+            $mostUsedCategory = $categoryUsage;
+        }
+
+        $posts = $publishedPosts
+            ->sortByDesc('views_count')
+            ->values()
+            ->map(function (Post $post) {
+                return [
+                    'id' => $post->id,
+                    'title' => $post->title,
+                    'category' => $post->category
+                        ? [
+                            'id' => $post->category->id,
+                            'name' => $post->category->name,
+                        ]
+                        : null,
+                    'views_count' => (int) $post->views_count,
+                    'published_at' => $post->updated_at,
+                ];
+            })
+            ->all();
+
+        return response()->json([
+            'message' => 'İstatistikler başarıyla getirildi.',
+            'statistics' => [
+                'summary' => [
+                    'total_views' => $totalViews,
+                    'average_views' => $averageViews,
+                    'published_posts_count' => $publishedPostsCount,
+                    'categories_count' => $categoriesCount,
+                ],
+                'chart' => [
+                    'period' => '30_days',
+                    'daily_views' => $dailyViews,
+                ],
+                'performance' => [
+                    'most_viewed_post' => $mostViewedPost
+                        ? [
+                            'id' => $mostViewedPost->id,
+                            'title' => $mostViewedPost->title,
+                            'views_count' => (int) $mostViewedPost->views_count,
+                        ]
+                        : null,
+                    'least_viewed_post' => $leastViewedPost
+                        ? [
+                            'id' => $leastViewedPost->id,
+                            'title' => $leastViewedPost->title,
+                            'views_count' => (int) $leastViewedPost->views_count,
+                        ]
+                        : null,
+                    'latest_published_post' => $latestPublishedPost
+                        ? [
+                            'id' => $latestPublishedPost->id,
+                            'title' => $latestPublishedPost->title,
+                            'published_at' => $latestPublishedPost->updated_at,
+                        ]
+                        : null,
+                    'most_used_category' => $mostUsedCategory,
+                ],
+                'posts' => $posts,
+            ],
+        ]);
+    }
+
     /**
  * Onay bekleyen yazıları listeler.
  */
