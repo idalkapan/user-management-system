@@ -26,3 +26,7 @@ export const updatePost = (id, postData) => {
 export const deletePost = (id) => {
   return api.delete(`/posts/${id}`)
 }
+
+export const getAdminDashboard = () => {
+  return api.get('/admin/dashboard')
+}

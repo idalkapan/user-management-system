@@ -2,18 +2,7 @@
   <div class="profile-page">
     <div class="profile-container">
       <header class="profile-header">
-        <div class="header-top">
-          <h1 class="page-title">Profilim</h1>
-
-          <button
-            type="button"
-            class="logout-button"
-            :disabled="isLoggingOut"
-            @click="logout"
-          >
-            {{ isLoggingOut ? 'Çıkış yapılıyor...' : 'Çıkış Yap' }}
-          </button>
-        </div>
+        <h1 class="page-title">Profilim</h1>
 
         <p class="page-subtitle">
           Hesap bilgilerinizi ve güvenlik ayarlarınızı yönetin
@@ -104,43 +93,6 @@
               Profil görselinizi yükleyin
             </span>
           </button>
-          <RouterLink
-          v-if="savedProfile.role === 'admin'"
-          to="/admin/posts"
-          class="action-card"
-          >
-          <span class="action-card-icon">📝</span>
-          <span class="action-card-label">Admin Paneli</span>
-          <span class="action-card-desc">
-            Onay bekleyen blog yazılarını inceleyin ve yönetin.
-          </span>
-        </RouterLink>
-
-        <RouterLink
-          v-if="savedProfile.role === 'user'"
-          to="/my-posts"
-          class="action-card"
-        >
-        
-          <span class="action-card-icon">📰</span>
-          <span class="action-card-label">Yazılarım</span>
-          <span class="action-card-desc">
-            Oluşturduğunuz blog yazılarınızı yönetin.
-          </span>
-
-      </RouterLink>
-      
-      <RouterLink to="/posts" class="action-card">
-        
-        <div class="action-icon">📚</div>
-        
-        <div>
-          <h3>Blog Yazıları</h3>
-           <p>Yayınlanmış blog yazılarını görüntüleyin ve arama yapın.</p>
-        </div>
-      
-      </RouterLink>
-
         </section>
 
         <section
@@ -435,19 +387,12 @@ import {
   ref,
   watch,
 } from 'vue'
-import { useRouter } from 'vue-router'
 import api from '../services/api'
-import { useAuthStore } from '../stores/auth'
-
-const authStore = useAuthStore()
-
-const router = useRouter()
 
 const isLoading = ref(true)
 const isUpdating = ref(false)
 const isChangingPassword = ref(false)
 const isUploadingPhoto = ref(false)
-const isLoggingOut = ref(false)
 
 const errorMessage = ref('')
 const successMessage = ref('')
@@ -776,18 +721,6 @@ const uploadPhoto = async () => {
   }
 }
 
-const logout = async () => {
-  clearMessages()
-  isLoggingOut.value = true
-
-  try {
-    await authStore.logout()
-    await router.push('/login')
-  } finally {
-    isLoggingOut.value = false
-  }
-}
-
 onMounted(() => {
   getProfile()
 })
@@ -799,9 +732,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .profile-page {
-  min-height: 100vh;
-  background-color: #f0f4f8;
-  padding: 2rem 1.5rem 3rem;
+  padding: 2rem;
   box-sizing: border-box;
 }
 
@@ -813,14 +744,6 @@ onBeforeUnmount(() => {
 
 .profile-header {
   margin-bottom: 1.75rem;
-}
-
-.header-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
 }
 
 .page-title {
@@ -835,30 +758,6 @@ onBeforeUnmount(() => {
   margin: 0.5rem 0 0;
   font-size: 0.9375rem;
   color: #718096;
-}
-
-.logout-button {
-  padding: 0.625rem 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #ffffff;
-  background-color: #dc2626;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    opacity 0.2s ease;
-  white-space: nowrap;
-}
-
-.logout-button:hover:not(:disabled) {
-  background-color: #b91c1c;
-}
-
-.logout-button:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
 }
 
 .loading-state {
@@ -1260,21 +1159,11 @@ onBeforeUnmount(() => {
 
 @media (max-width: 640px) {
   .profile-page {
-    padding: 1.25rem 1rem 2rem;
+    padding: 1.25rem 1rem;
   }
 
   .page-title {
     font-size: 1.5rem;
-  }
-
-  .header-top {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .logout-button {
-    width: 100%;
-    text-align: center;
   }
 
   .profile-summary {

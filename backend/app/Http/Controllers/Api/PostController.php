@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Requests\RejectPostRequest;
+use App\Models\Category;
+use App\Models\PostView;
+use App\Models\User;
 
 class PostController extends Controller
 {
@@ -187,6 +190,68 @@ class PostController extends Controller
             'message' => 'Onay bekleyen yazılar başarıyla listelendi.',
             'posts' => PostResource::collection($posts),
             ]);
+    }
+
+    /**
+     * Admin dashboard özet verilerini döndürür.
+     */
+    public function dashboard(): JsonResponse
+    {
+        $postCounts = Post::query()
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $postsPublished = (int) ($postCounts['published'] ?? 0);
+        $postsPending = (int) ($postCounts['pending'] ?? 0);
+        $postsRejected = (int) ($postCounts['rejected'] ?? 0);
+        $postsDraft = (int) ($postCounts['draft'] ?? 0);
+
+        $recentPendingPosts = Post::with(['user', 'category'])
+            ->withCount('views')
+            ->where('status', 'pending')
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(function (Post $post) {
+                return [
+                    'id' => $post->id,
+                    'title' => $post->title,
+                    'status' => $post->status,
+                    'author' => $post->user
+                        ? [
+                            'id' => $post->user->id,
+                            'name' => $post->user->name,
+                        ]
+                        : null,
+                    'category' => $post->category
+                        ? [
+                            'id' => $post->category->id,
+                            'name' => $post->category->name,
+                        ]
+                        : null,
+                    'views_count' => (int) $post->views_count,
+                    'created_at' => $post->created_at,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json([
+            'message' => 'Dashboard verileri başarıyla getirildi.',
+            'summary' => [
+                'users_total' => User::count(),
+                'posts_total' => Post::count(),
+                'posts_published' => $postsPublished,
+                'posts_pending' => $postsPending,
+                'posts_rejected' => $postsRejected,
+                'posts_draft' => $postsDraft,
+                'categories_total' => Category::count(),
+                'categories_active' => Category::where('is_active', true)->count(),
+                'views_total' => PostView::count(),
+            ],
+            'recent_pending_posts' => $recentPendingPosts,
+        ]);
     }
 
     /**

@@ -62,7 +62,7 @@ const login = async () => {
       password: password.value,
     })
 
-    router.push('/profile')
+    router.push(authStore.getHomeRoute())
   } catch (error) {
     errorMessage.value =
       error.response?.data?.message || 'Giriş yapılırken bir hata oluştu.'

@@ -93,10 +93,6 @@ const setFilter = (filter) => {
   activeFilter.value = filter
 }
 
-const goToProfile = () => {
-  router.push('/profile')
-}
-
 const goToCreatePost = () => {
   router.push('/posts/create')
 }
@@ -186,22 +182,12 @@ onMounted(async () => {
   <div class="posts-page">
     <div class="posts-container">
       <header class="page-header">
-        <div class="header-content">
-          <button
-            type="button"
-            class="back-button"
-            @click="goToProfile"
-          >
-            ← Profile Dön
-          </button>
+        <div class="header-text">
+          <h1> Yazılarım </h1>
 
-          <div class="header-text">
-            <h1> Yazılarım </h1>
-
-            <p>
-              Blog yazılarınızı görüntüleyin, düzenleyin ve yönetin.
-            </p>
-          </div>
+          <p>
+            Blog yazılarınızı görüntüleyin, düzenleyin ve yönetin.
+          </p>
         </div>
 
         <button
@@ -521,15 +507,13 @@ onMounted(async () => {
 
 <style scoped>
 .posts-page {
-  min-height: 100vh;
-  padding: 2rem 1.5rem 3rem;
-  background-color: #f0f4f8;
+  padding: 2rem;
   box-sizing: border-box;
 }
 
 .posts-container {
   width: 100%;
-  max-width: 1080px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -539,13 +523,6 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
-}
-
-.header-content {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1rem;
 }
 
 .header-text h1 {
@@ -561,21 +538,6 @@ onMounted(async () => {
   color: #718096;
   font-size: 0.9375rem;
   line-height: 1.5;
-}
-
-.back-button {
-  padding: 0;
-  color: #4f6ef7;
-  background: transparent;
-  border: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.back-button:hover {
-  color: #3b5de7;
-  text-decoration: underline;
 }
 
 .create-button {
@@ -1039,7 +1001,7 @@ onMounted(async () => {
 
 @media (max-width: 760px) {
   .posts-page {
-    padding: 1.25rem 1rem 2rem;
+    padding: 1.25rem 1rem;
   }
 
   .page-header {

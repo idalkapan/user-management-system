@@ -160,14 +160,6 @@ const goBack = () => {
   <div class="create-post-page">
     <div class="create-post-container">
       <header class="page-header">
-        <button
-          type="button"
-          class="back-button"
-          @click="goBack"
-        >
-          ← Yazılarıma Dön
-        </button>
-
         <div class="header-content">
           <div>
             <h1>Yeni Blog Yazısı</h1>
@@ -449,36 +441,18 @@ const goBack = () => {
 
 <style scoped>
 .create-post-page {
-  min-height: 100vh;
-  padding: 2rem 1.5rem 3rem;
-  background-color: #f0f4f8;
+  padding: 2rem;
   box-sizing: border-box;
 }
 
 .create-post-container {
   width: 100%;
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
 .page-header {
   margin-bottom: 1.5rem;
-}
-
-.back-button {
-  padding: 0;
-  margin-bottom: 1rem;
-  color: #4f6ef7;
-  background-color: transparent;
-  border: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.back-button:hover {
-  color: #3b5de7;
-  text-decoration: underline;
 }
 
 .header-content {
@@ -872,7 +846,7 @@ const goBack = () => {
 
 @media (max-width: 700px) {
   .create-post-page {
-    padding: 1.25rem 1rem 2rem;
+    padding: 1.25rem 1rem;
   }
 
   .header-content h1 {

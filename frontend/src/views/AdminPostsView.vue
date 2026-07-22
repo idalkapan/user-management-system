@@ -122,10 +122,6 @@ const approvePost = async (postId) => {
   }
 }
 
-const goToProfile = () => {
-  router.push('/profile')
-}
-
 onMounted(() => {
   loadPendingPosts()
 })
@@ -137,26 +133,11 @@ onMounted(() => {
     <div class="admin-posts-container">
       <header class="page-header">
   <div>
-    <button
-      type="button"
-      class="back-button"
-      @click="goToProfile"
-    >
-      ← Profile Dön
-    </button>
-
     <h1>Admin Paneli</h1>
     <p>Onay bekleyen blog yazılarını inceleyin ve yönetin.</p>
   </div>
 
   <div class="header-actions">
-    <RouterLink
-      to="/admin/categories"
-      class="category-management-link"
-    >
-      Kategori Yönetimi
-    </RouterLink>
-
     <button
       type="button"
       class="refresh-button"
@@ -296,13 +277,12 @@ onMounted(() => {
 
 <style scoped>
 .admin-posts-page {
-  min-height: 100vh;
-  padding: 2rem 1.5rem;
-  background-color: #f0f4f8;
+  padding: 2rem;
+  box-sizing: border-box;
 }
 
 .admin-posts-container {
-  max-width: 1050px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -315,7 +295,7 @@ onMounted(() => {
 }
 
 .page-header h1 {
-  margin: 1rem 0 0.4rem;
+  margin: 0 0 0.4rem;
   color: #1a1a2e;
 }
 
@@ -324,35 +304,10 @@ onMounted(() => {
   color: #718096;
 }
 
-.back-button {
-  padding: 0;
-  color: #4f6ef7;
-  background: transparent;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 .header-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-}
-
-.category-management-link {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.7rem 1rem;
-  color: #ffffff;
-  background-color: #4f46e5;
-  border-radius: 8px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background-color 0.2s;
-}
-
-.category-management-link:hover {
-  background-color: #4338ca;
 }
 
 .refresh-button {
@@ -574,7 +529,6 @@ onMounted(() => {
     align-items: stretch;
   }
 
-  .category-management-link,
   .refresh-button {
     justify-content: center;
     text-align: center;

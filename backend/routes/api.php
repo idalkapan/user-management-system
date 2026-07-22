@@ -73,6 +73,11 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     });
 
     Route::get(
+        '/admin/dashboard',
+        [PostController::class, 'dashboard']
+    );
+
+    Route::get(
         '/admin/posts/pending',
         [PostController::class, 'pending']
     );

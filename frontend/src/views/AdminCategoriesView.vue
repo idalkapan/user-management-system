@@ -162,35 +162,6 @@
           </table>
         </div>
       </section>
-
-      <nav
-        class="admin-nav admin-nav-bottom"
-        aria-label="Yönetim navigasyonu"
-      >
-        <RouterLink
-          to="/admin/posts"
-          class="admin-nav-link"
-          active-class="is-active"
-        >
-          Yazılar
-        </RouterLink>
-
-        <RouterLink
-          to="/admin/categories"
-          class="admin-nav-link"
-          active-class="is-active"
-        >
-          Kategoriler
-        </RouterLink>
-
-        <RouterLink
-          to="/profile"
-          class="admin-nav-link"
-          active-class="is-active"
-        >
-          Profilim
-        </RouterLink>
-      </nav>
     </div>
 
     <!-- Oluşturma / Düzenleme Modal -->
@@ -862,15 +833,12 @@ onMounted(() => {
 
 <style scoped>
 .admin-categories-page {
-  min-height: 100vh;
-  padding: 2rem 1.5rem 7rem;
-  background:
-    radial-gradient(circle at top right, rgba(79, 70, 229, 0.08), transparent 28%),
-    linear-gradient(180deg, #eef2f7 0%, #f0f4f8 100%);
+  padding: 2rem;
+  box-sizing: border-box;
 }
 
 .admin-categories-container {
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -894,55 +862,6 @@ onMounted(() => {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-}
-
-.admin-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  padding: 0.85rem 1.25rem;
-  background-color: rgba(255, 255, 255, 0.96);
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(10px);
-}
-
-.admin-nav-bottom {
-  position: fixed;
-  left: 50%;
-  bottom: 1rem;
-  z-index: 200;
-  width: calc(100% - 2rem);
-  max-width: 520px;
-  transform: translateX(-50%);
-}
-
-.admin-nav-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 7.5rem;
-  padding: 0.6rem 1.1rem;
-  border-radius: 10px;
-  color: #475569;
-  font-size: 0.925rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.admin-nav-link:hover {
-  color: #1e293b;
-  background-color: #f1f5f9;
-}
-
-.admin-nav-link.is-active {
-  color: #4338ca;
-  background-color: #eef2ff;
-  box-shadow: inset 0 0 0 1px #c7d2fe;
 }
 
 .page-header {
@@ -1352,28 +1271,11 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .admin-categories-page {
-    padding: 1.25rem 1rem 8.5rem;
+    padding: 1.25rem 1rem;
   }
 
   .page-hero {
     padding: 1.25rem;
-  }
-
-  .admin-nav-bottom {
-    bottom: 0.75rem;
-    width: calc(100% - 1rem);
-    max-width: none;
-    padding: 0.75rem;
-  }
-
-  .admin-nav {
-    flex-direction: column;
-    gap: 0.45rem;
-  }
-
-  .admin-nav-link {
-    width: 100%;
-    min-width: 0;
   }
 
   .page-header {

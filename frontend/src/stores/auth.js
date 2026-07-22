@@ -36,6 +36,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const getHomeRoute = () => {
+    if (isAdmin.value) {
+      return '/admin/dashboard'
+    }
+
+    return '/posts'
+  }
+
   return {
     token,
     user,
@@ -44,5 +52,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     fetchUser,
     logout,
+    getHomeRoute,
   }
 })

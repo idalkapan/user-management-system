@@ -67,12 +67,6 @@ const filteredPosts = computed(() => {
   })
 })
 
-const goToProfile = () => {
-  router.push('/profile')
-}
-
-
-
 const getStatusLabel = (status) => {
   if (status === 'published') {
     return 'Yayında'
@@ -110,26 +104,13 @@ onMounted(() => {
   <div class="posts-page">
     <div class="posts-container">
       <header class="page-header">
-        <div class="header-content">
-          <button
-            type="button"
-            class="back-button"
-            @click="goToProfile"
-          >
-            ← Profile Dön
-          </button>
+        <div class="header-text">
+          <h1>Blog Yazıları</h1>
 
-          <div class="header-text">
-            <h1>Blog Yazıları</h1>
-            
-            <p>
-              Yayınlanmış blog yazılarını okuyabilir ve içeriklerde arama yapabilirsiniz.
-            </p>
-          </div>
-
+          <p>
+            Yayınlanmış blog yazılarını okuyabilir ve içeriklerde arama yapabilirsiniz.
+          </p>
         </div>
-
-       
       </header>
 
       <section class="management-panel">
@@ -315,13 +296,6 @@ onMounted(() => {
   margin-bottom: 1.5rem;
 }
 
-.header-content {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
 .header-text h1 {
   margin: 0;
   color: #1a1a2e;
@@ -335,21 +309,6 @@ onMounted(() => {
   color: #718096;
   font-size: 0.9375rem;
   line-height: 1.5;
-}
-
-.back-button {
-  padding: 0;
-  color: #4f6ef7;
-  background: transparent;
-  border: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.back-button:hover {
-  color: #3b5de7;
-  text-decoration: underline;
 }
 
 .management-panel {
