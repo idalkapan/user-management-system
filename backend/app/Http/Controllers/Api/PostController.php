@@ -27,7 +27,15 @@ class PostController extends Controller
     {
         $user = $request->user();
 
-        $query = Post::with(['user', 'category'])->withCount('views');
+        $query = Post::with(['user', 'category'])
+            ->withCount(['views', 'likes']);
+
+        if ($user?->role === 'user') {
+            $query->withExists([
+                'likes as is_liked_by_current_user' => fn ($likeQuery) =>
+                    $likeQuery->where('user_id', $user->id),
+            ]);
+        }
 
         if (!$user || $user->role !== 'admin') {
             $query->where('status', 'published');
@@ -104,11 +112,21 @@ class PostController extends Controller
     /**
      * Belirli bir yazıyı getirir.
      */
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
-        $post = Post::with(['user', 'category'])
-            ->withCount('views')
-            ->findOrFail($id);
+        $user = $request->user();
+
+        $query = Post::with(['user', 'category'])
+            ->withCount(['views', 'likes']);
+
+        if ($user?->role === 'user') {
+            $query->withExists([
+                'likes as is_liked_by_current_user' => fn ($likeQuery) =>
+                    $likeQuery->where('user_id', $user->id),
+            ]);
+        }
+
+        $post = $query->findOrFail($id);
 
         return response()->json([
             'message' => 'Yazı başarıyla getirildi.',

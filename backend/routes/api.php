@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\PostInteractionController;
+use App\Http\Controllers\Api\PostLikeController;
 use App\Http\Controllers\Api\CategoryController as PublicCategoryController;
 
 /*
@@ -138,6 +139,16 @@ Route::middleware('auth:sanctum')->get(
 Route::middleware('auth:sanctum')->post(
     '/posts/{post}/views',
     [PostInteractionController::class, 'recordView']
+);
+
+Route::middleware('auth:sanctum')->post(
+    '/posts/{post}/like',
+    [PostLikeController::class, 'store']
+);
+
+Route::middleware('auth:sanctum')->delete(
+    '/posts/{post}/like',
+    [PostLikeController::class, 'destroy']
 );
 
 Route::middleware('auth:sanctum')->put(

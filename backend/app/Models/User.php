@@ -45,5 +45,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(PostView::class);
     }
+
+    public function postLikes(): HasMany
+    {
+        return $this->hasMany(PostLike::class);
+    }
 }
 

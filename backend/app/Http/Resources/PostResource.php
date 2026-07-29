@@ -38,8 +38,23 @@ class PostResource extends JsonResource
 
             'views_count' => $this->whenCounted('views', fn () => (int) $this->views_count),
 
+            'likes_count' => $this->whenCounted('likes', fn () => (int) $this->likes_count),
+
+            'is_liked_by_current_user' => $this->resolveIsLikedByCurrentUser($request),
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             ];
+    }
+
+    private function resolveIsLikedByCurrentUser(Request $request): bool
+    {
+        $user = $request->user();
+
+        if (!$user || $user->role !== 'user') {
+            return false;
+        }
+
+        return (bool) ($this->is_liked_by_current_user ?? false);
     }
 }

@@ -12,6 +12,14 @@ export const recordView = (postId) => {
   return api.post(`/posts/${postId}/views`)
 }
 
+export const likePost = (postId) => {
+  return api.post(`/posts/${postId}/like`)
+}
+
+export const unlikePost = (postId) => {
+  return api.delete(`/posts/${postId}/like`)
+}
+
 export const getMyPosts = () => {
   return api.get('/my-posts')
 }

@@ -1,16 +1,19 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getPosts } from '../services/postService'
-
+import { getPosts, likePost, unlikePost } from '../services/postService'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const posts = ref([])
 const searchQuery = ref('')
 const selectedCategory = ref('')
 const isLoading = ref(true)
 const errorMessage = ref('')
+const likeActionError = ref('')
+const likingPostIds = ref(new Set())
 
 
 
@@ -95,7 +98,90 @@ const formatDate = (date) => {
   }).format(new Date(date))
 }
 
-onMounted(() => {
+const getAuthorId = (post) => post.author?.id ?? post.user?.id ?? null
+
+const canLikePost = (post) => {
+  if (!authStore.isAuthenticated || authStore.isAdmin) {
+    return false
+  }
+
+  if (post.status !== 'published') {
+    return false
+  }
+
+  const authorId = getAuthorId(post)
+
+  return authorId !== null && authorId !== authStore.user?.id
+}
+
+const isLikingPost = (postId) => likingPostIds.value.has(postId)
+
+const getLikeAriaLabel = (post) =>
+  post.is_liked_by_current_user ? 'Beğeniyi kaldır' : 'Beğeni ekle'
+
+const toggleLike = async (post) => {
+  if (!canLikePost(post) || isLikingPost(post.id)) {
+    return
+  }
+
+  likeActionError.value = ''
+
+  const postIndex = posts.value.findIndex((item) => item.id === post.id)
+
+  if (postIndex === -1) {
+    return
+  }
+
+  const currentPost = posts.value[postIndex]
+  const wasLiked = Boolean(currentPost.is_liked_by_current_user)
+  const previousLikesCount = currentPost.likes_count ?? 0
+
+  likingPostIds.value = new Set(likingPostIds.value).add(post.id)
+
+  posts.value[postIndex] = {
+    ...currentPost,
+    is_liked_by_current_user: !wasLiked,
+    likes_count: Math.max(0, previousLikesCount + (wasLiked ? -1 : 1)),
+  }
+
+  try {
+    const response = wasLiked
+      ? await unlikePost(post.id)
+      : await likePost(post.id)
+
+    posts.value[postIndex] = {
+      ...posts.value[postIndex],
+      likes_count: response.data.likes_count ?? posts.value[postIndex].likes_count,
+      is_liked_by_current_user:
+        response.data.is_liked_by_current_user ??
+        posts.value[postIndex].is_liked_by_current_user,
+    }
+  } catch (error) {
+    posts.value[postIndex] = {
+      ...posts.value[postIndex],
+      is_liked_by_current_user: wasLiked,
+      likes_count: previousLikesCount,
+    }
+
+    likeActionError.value =
+      error.response?.data?.message ||
+      'Beğeni işlemi sırasında bir hata oluştu.'
+  } finally {
+    const nextSet = new Set(likingPostIds.value)
+    nextSet.delete(post.id)
+    likingPostIds.value = nextSet
+  }
+}
+
+onMounted(async () => {
+  if (authStore.isAuthenticated && !authStore.user) {
+    try {
+      await authStore.fetchUser()
+    } catch {
+      // Kullanıcı bilgisi guard akışına bırakılır.
+    }
+  }
+
   loadPosts()
 })
 </script>
@@ -166,6 +252,15 @@ onMounted(() => {
           <span class="alert-icon">!</span>
 
           <span>{{ errorMessage }}</span>
+        </div>
+
+        <div
+          v-if="likeActionError"
+          class="alert alert-error"
+        >
+          <span class="alert-icon">!</span>
+
+          <span>{{ likeActionError }}</span>
         </div>
 
         <div
@@ -244,15 +339,89 @@ onMounted(() => {
 
               <div class="post-meta">
                 <span class="meta-item">
-                  👤 {{ post.user?.name }}
-                </span>
-
-                <span class="meta-item">
-                  👁️ {{ post.views_count ?? 0 }}
+                  👤 {{ post.author?.name ?? post.user?.name ?? 'Bilinmiyor' }}
                 </span>
 
                 <span class="meta-item">
                   📅 {{ formatDate(post.created_at) }}
+                </span>
+              </div>
+
+              <div class="post-stats">
+                <span class="stat-chip">
+                  <span
+                    class="stat-icon"
+                    aria-hidden="true"
+                  >👁️</span>
+                  <span>{{ post.views_count ?? 0 }}</span>
+                </span>
+
+                <button
+                  v-if="canLikePost(post)"
+                  type="button"
+                  class="like-control"
+                  :class="{ 'is-liked': post.is_liked_by_current_user }"
+                  :disabled="isLikingPost(post.id)"
+                  :aria-label="getLikeAriaLabel(post)"
+                  :aria-pressed="post.is_liked_by_current_user"
+                  :title="getLikeAriaLabel(post)"
+                  @click="toggleLike(post)"
+                >
+                  <svg
+                    v-if="post.is_liked_by_current_user"
+                    class="heart-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                      fill="currentColor"
+                    />
+                  </svg>
+
+                  <svg
+                    v-else
+                    class="heart-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+
+                  <span>{{ post.likes_count ?? 0 }}</span>
+                </button>
+
+                <span
+                  v-else
+                  class="stat-chip stat-chip-like"
+                  :title="`${post.likes_count ?? 0} beğeni`"
+                >
+                  <svg
+                    class="heart-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+
+                  <span>{{ post.likes_count ?? 0 }}</span>
                 </span>
               </div>
             </div>
@@ -589,6 +758,85 @@ onMounted(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: 1.25rem;
+}
+
+.post-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+}
+
+.stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.stat-chip-like {
+  color: #94a3b8;
+}
+
+.stat-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.heart-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.like-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.55rem;
+  color: #64748b;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.like-control:hover:not(:disabled) {
+  color: #475569;
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.like-control.is-liked {
+  color: #e11d48;
+  background-color: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.like-control.is-liked:hover:not(:disabled) {
+  background-color: #ffe4e6;
+  border-color: #fda4af;
+}
+
+.like-control:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.like-control:focus-visible {
+  outline: 2px solid #4f6ef7;
+  outline-offset: 2px;
 }
 
 .meta-item {

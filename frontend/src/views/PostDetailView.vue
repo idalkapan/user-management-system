@@ -2,14 +2,18 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../services/api'
-import { recordView } from '../services/postService'
+import { likePost, recordView, unlikePost } from '../services/postService'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const post = ref(null)
 const isLoading = ref(true)
 const errorMessage = ref('')
+const likeActionError = ref('')
+const isLiking = ref(false)
 
 const loadPost = async () => {
   isLoading.value = true
@@ -128,7 +132,81 @@ const goToEdit = () => {
   router.push(`/posts/${post.value.id}/edit`)
 }
 
-onMounted(() => {
+const getAuthorId = (currentPost) =>
+  currentPost?.author?.id ?? currentPost?.user?.id ?? null
+
+const canLikePost = computed(() => {
+  if (!post.value || !authStore.isAuthenticated || authStore.isAdmin) {
+    return false
+  }
+
+  if (post.value.status !== 'published') {
+    return false
+  }
+
+  const authorId = getAuthorId(post.value)
+
+  return authorId !== null && authorId !== authStore.user?.id
+})
+
+const likeAriaLabel = computed(() =>
+  post.value?.is_liked_by_current_user ? 'Beğeniyi kaldır' : 'Beğeni ekle',
+)
+
+const toggleLike = async () => {
+  if (!canLikePost.value || isLiking.value || !post.value?.id) {
+    return
+  }
+
+  likeActionError.value = ''
+
+  const wasLiked = Boolean(post.value.is_liked_by_current_user)
+  const previousLikesCount = post.value.likes_count ?? 0
+
+  isLiking.value = true
+
+  post.value = {
+    ...post.value,
+    is_liked_by_current_user: !wasLiked,
+    likes_count: Math.max(0, previousLikesCount + (wasLiked ? -1 : 1)),
+  }
+
+  try {
+    const response = wasLiked
+      ? await unlikePost(post.value.id)
+      : await likePost(post.value.id)
+
+    post.value = {
+      ...post.value,
+      likes_count: response.data.likes_count ?? post.value.likes_count,
+      is_liked_by_current_user:
+        response.data.is_liked_by_current_user ??
+        post.value.is_liked_by_current_user,
+    }
+  } catch (error) {
+    post.value = {
+      ...post.value,
+      is_liked_by_current_user: wasLiked,
+      likes_count: previousLikesCount,
+    }
+
+    likeActionError.value =
+      error.response?.data?.message ||
+      'Beğeni işlemi sırasında bir hata oluştu.'
+  } finally {
+    isLiking.value = false
+  }
+}
+
+onMounted(async () => {
+  if (authStore.isAuthenticated && !authStore.user) {
+    try {
+      await authStore.fetchUser()
+    } catch {
+      // Kullanıcı bilgisi guard akışına bırakılır.
+    }
+  }
+
   loadPost()
 })
 </script>
@@ -239,14 +317,114 @@ onMounted(() => {
                 {{ formatDate(post.created_at) }}
               </strong>
             </div>
+          </div>
 
-            <div class="views-information">
-              <span class="information-label">Görüntülenme</span>
+          <div class="interaction-toolbar">
+            <div class="toolbar-stat">
+              <svg
+                class="toolbar-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="3"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                />
+              </svg>
 
-              <strong>
-                👁️ {{ post.views_count ?? 0 }} görüntülenme
-              </strong>
+              <span class="toolbar-stat-value">{{ post.views_count ?? 0 }}</span>
+              <span class="toolbar-stat-label">görüntülenme</span>
             </div>
+
+            <button
+              v-if="canLikePost"
+              type="button"
+              class="like-control like-control-detail"
+              :class="{ 'is-liked': post.is_liked_by_current_user }"
+              :disabled="isLiking"
+              :aria-label="likeAriaLabel"
+              :aria-pressed="post.is_liked_by_current_user"
+              :title="likeAriaLabel"
+              @click="toggleLike"
+            >
+              <svg
+                v-if="post.is_liked_by_current_user"
+                class="heart-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                  fill="currentColor"
+                />
+              </svg>
+
+              <svg
+                v-else
+                class="heart-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+
+              <span class="toolbar-stat-value">{{ post.likes_count ?? 0 }}</span>
+              <span class="toolbar-stat-label">beğeni</span>
+            </button>
+
+            <div
+              v-else
+              class="toolbar-stat toolbar-stat-like"
+              :title="`${post.likes_count ?? 0} beğeni`"
+            >
+              <svg
+                class="heart-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+
+              <span class="toolbar-stat-value">{{ post.likes_count ?? 0 }}</span>
+              <span class="toolbar-stat-label">beğeni</span>
+            </div>
+          </div>
+
+          <div
+            v-if="likeActionError"
+            class="like-action-error"
+          >
+            {{ likeActionError }}
           </div>
         </div>
 
@@ -497,8 +675,7 @@ onMounted(() => {
 }
 
 .author-information div,
-.date-information,
-.views-information {
+.date-information {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -510,11 +687,109 @@ onMounted(() => {
 }
 
 .author-information strong,
-.date-information strong,
-.views-information strong {
+.date-information strong {
   color: #4a5568;
   font-size: 0.825rem;
   font-weight: 600;
+}
+
+.interaction-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding: 0.65rem 0.85rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.toolbar-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #64748b;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.toolbar-stat-like {
+  color: #94a3b8;
+}
+
+.toolbar-icon,
+.heart-icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.toolbar-stat-value {
+  color: #334155;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.toolbar-stat-label {
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.like-control-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.65rem;
+  color: #64748b;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.like-control-detail:hover:not(:disabled) {
+  color: #475569;
+  background-color: #ffffff;
+  border-color: #cbd5e0;
+}
+
+.like-control-detail.is-liked {
+  color: #e11d48;
+  background-color: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.like-control-detail.is-liked:hover:not(:disabled) {
+  background-color: #ffe4e6;
+  border-color: #fda4af;
+}
+
+.like-control-detail:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.like-control-detail:focus-visible {
+  outline: 2px solid #4f6ef7;
+  outline-offset: 2px;
+}
+
+.like-action-error {
+  margin-top: 0.85rem;
+  padding: 0.85rem 1rem;
+  color: #991b1b;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.875rem;
 }
 
 .featured-image-wrapper {
@@ -613,6 +888,10 @@ onMounted(() => {
     align-items: flex-start;
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .interaction-toolbar {
+    width: 100%;
   }
 
   .featured-image-wrapper,
