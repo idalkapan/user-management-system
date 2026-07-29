@@ -16,6 +16,7 @@ import PostEditView from '../views/PostEditView.vue'
 import AdminCategoriesView from '../views/AdminCategoriesView.vue'
 import AdminDashboardView from '../views/AdminDashboardView.vue'
 import StatisticsView from '../views/StatisticsView.vue'
+import AdminStatisticsView from '../views/AdminStatisticsView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -65,6 +66,15 @@ const router = createRouter({
           path: 'admin/dashboard',
           name: 'admin-dashboard',
           component: AdminDashboardView,
+          meta: {
+            requiresAuth: true,
+            requiresAdmin: true,
+          },
+        },
+        {
+          path: 'admin/statistics',
+          name: 'admin-statistics',
+          component: AdminStatisticsView,
           meta: {
             requiresAuth: true,
             requiresAdmin: true,

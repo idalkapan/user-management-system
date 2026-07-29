@@ -34,3 +34,7 @@ export const getAdminDashboard = () => {
 export const getMyStatistics = () => {
   return api.get('/my-statistics')
 }
+
+export const getAdminStatistics = () => {
+  return api.get('/admin/statistics')
+}

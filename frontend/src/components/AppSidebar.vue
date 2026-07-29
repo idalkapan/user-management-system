@@ -35,7 +35,7 @@
         </RouterLink>
 
         <RouterLink
-          to="/statistics"
+          to="/admin/statistics"
           class="sidebar-link"
         >
           İstatistikler

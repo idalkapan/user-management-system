@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Admin\CategoryController;
+use App\Http\Controllers\Api\Admin\StatisticsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Api\PostController;
@@ -75,6 +76,11 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get(
         '/admin/dashboard',
         [PostController::class, 'dashboard']
+    );
+
+    Route::get(
+        '/admin/statistics',
+        [StatisticsController::class, 'index']
     );
 
     Route::get(
