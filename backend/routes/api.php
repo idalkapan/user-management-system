@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\PostInteractionController;
+use App\Http\Controllers\Api\PostCommentController;
+use App\Http\Controllers\Api\PostCommentLikeController;
 use App\Http\Controllers\Api\PostLikeController;
 use App\Http\Controllers\Api\CategoryController as PublicCategoryController;
 
@@ -149,6 +151,46 @@ Route::middleware('auth:sanctum')->post(
 Route::middleware('auth:sanctum')->delete(
     '/posts/{post}/like',
     [PostLikeController::class, 'destroy']
+);
+
+Route::middleware('auth:sanctum')->get(
+    '/posts/{post}/comments',
+    [PostCommentController::class, 'index']
+);
+
+Route::middleware('auth:sanctum')->post(
+    '/posts/{post}/comments',
+    [PostCommentController::class, 'store']
+);
+
+Route::middleware('auth:sanctum')->put(
+    '/comments/{comment}',
+    [PostCommentController::class, 'update']
+);
+
+Route::middleware('auth:sanctum')->delete(
+    '/comments/{comment}',
+    [PostCommentController::class, 'destroy']
+);
+
+Route::middleware('auth:sanctum')->get(
+    '/comments/{comment}/replies',
+    [PostCommentController::class, 'replies']
+);
+
+Route::middleware('auth:sanctum')->post(
+    '/comments/{comment}/replies',
+    [PostCommentController::class, 'storeReply']
+);
+
+Route::middleware('auth:sanctum')->post(
+    '/comments/{comment}/like',
+    [PostCommentLikeController::class, 'store']
+);
+
+Route::middleware('auth:sanctum')->delete(
+    '/comments/{comment}/like',
+    [PostCommentLikeController::class, 'destroy']
 );
 
 Route::middleware('auth:sanctum')->put(

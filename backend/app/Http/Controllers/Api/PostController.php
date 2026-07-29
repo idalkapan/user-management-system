@@ -28,7 +28,7 @@ class PostController extends Controller
         $user = $request->user();
 
         $query = Post::with(['user', 'category'])
-            ->withCount(['views', 'likes']);
+            ->withCount(['views', 'likes', 'comments']);
 
         if ($user?->role === 'user') {
             $query->withExists([
@@ -117,7 +117,7 @@ class PostController extends Controller
         $user = $request->user();
 
         $query = Post::with(['user', 'category'])
-            ->withCount(['views', 'likes']);
+            ->withCount(['views', 'likes', 'comments']);
 
         if ($user?->role === 'user') {
             $query->withExists([
@@ -184,7 +184,7 @@ class PostController extends Controller
     public function myPosts(Request $request): JsonResponse
     {
         $posts = Post::with(['user', 'category'])
-           ->withCount('views')
+           ->withCount(['views', 'likes', 'comments'])
            ->where('user_id', $request->user()->id)
            ->latest()
            ->get();

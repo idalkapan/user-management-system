@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPosts, likePost, unlikePost } from '../services/postService'
 import { useAuthStore } from '../stores/auth'
+import PostInteractionBar from '../components/PostInteractionBar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -118,6 +119,17 @@ const isLikingPost = (postId) => likingPostIds.value.has(postId)
 
 const getLikeAriaLabel = (post) =>
   post.is_liked_by_current_user ? 'Beğeniyi kaldır' : 'Beğeni ekle'
+
+const openPostComments = (post) => {
+  router.push({
+    name: 'post-detail',
+    params: { id: post.id },
+    query: {
+      from: 'blog',
+      focus: 'comments',
+    },
+  })
+}
 
 const toggleLike = async (post) => {
   if (!canLikePost(post) || isLikingPost(post.id)) {
@@ -347,83 +359,18 @@ onMounted(async () => {
                 </span>
               </div>
 
-              <div class="post-stats">
-                <span class="stat-chip">
-                  <span
-                    class="stat-icon"
-                    aria-hidden="true"
-                  >👁️</span>
-                  <span>{{ post.views_count ?? 0 }}</span>
-                </span>
-
-                <button
-                  v-if="canLikePost(post)"
-                  type="button"
-                  class="like-control"
-                  :class="{ 'is-liked': post.is_liked_by_current_user }"
-                  :disabled="isLikingPost(post.id)"
-                  :aria-label="getLikeAriaLabel(post)"
-                  :aria-pressed="post.is_liked_by_current_user"
-                  :title="getLikeAriaLabel(post)"
-                  @click="toggleLike(post)"
-                >
-                  <svg
-                    v-if="post.is_liked_by_current_user"
-                    class="heart-icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                      fill="currentColor"
-                    />
-                  </svg>
-
-                  <svg
-                    v-else
-                    class="heart-icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-
-                  <span>{{ post.likes_count ?? 0 }}</span>
-                </button>
-
-                <span
-                  v-else
-                  class="stat-chip stat-chip-like"
-                  :title="`${post.likes_count ?? 0} beğeni`"
-                >
-                  <svg
-                    class="heart-icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-
-                  <span>{{ post.likes_count ?? 0 }}</span>
-                </span>
-              </div>
+              <PostInteractionBar
+                variant="list"
+                :views-count="post.views_count ?? 0"
+                :likes-count="post.likes_count ?? 0"
+                :comments-count="post.comments_count ?? 0"
+                :is-liked="Boolean(post.is_liked_by_current_user)"
+                :can-like="canLikePost(post)"
+                :is-liking="isLikingPost(post.id)"
+                :like-aria-label="getLikeAriaLabel(post)"
+                @toggle-like="toggleLike(post)"
+                @open-comments="openPostComments(post)"
+              />
             </div>
 
             <div class="post-actions">
@@ -758,85 +705,6 @@ onMounted(async () => {
   align-items: center;
   flex-wrap: wrap;
   gap: 1.25rem;
-}
-
-.post-stats {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: 0.65rem;
-}
-
-.stat-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: #64748b;
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.stat-chip-like {
-  color: #94a3b8;
-}
-
-.stat-icon {
-  font-size: 0.85rem;
-  line-height: 1;
-}
-
-.heart-icon {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
-
-.like-control {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.28rem 0.55rem;
-  color: #64748b;
-  background-color: transparent;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.like-control:hover:not(:disabled) {
-  color: #475569;
-  background-color: #f8fafc;
-  border-color: #e2e8f0;
-}
-
-.like-control.is-liked {
-  color: #e11d48;
-  background-color: #fff1f2;
-  border-color: #fecdd3;
-}
-
-.like-control.is-liked:hover:not(:disabled) {
-  background-color: #ffe4e6;
-  border-color: #fda4af;
-}
-
-.like-control:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.like-control:focus-visible {
-  outline: 2px solid #4f6ef7;
-  outline-offset: 2px;
 }
 
 .meta-item {

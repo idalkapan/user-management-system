@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMyPosts } from '../services/postService'
 import api from '../services/api'
+import PostInteractionBar from '../components/PostInteractionBar.vue'
 
 const router = useRouter()
 
@@ -423,9 +424,14 @@ onMounted(async () => {
                   👤 {{ post.user?.name }}
                 </span>
 
-                <span class="meta-item">
-                  👁️ {{ post.views_count ?? 0 }}
-                </span>
+                <PostInteractionBar
+                  v-if="post.status === 'published'"
+                  variant="list"
+                  read-only
+                  :views-count="post.views_count ?? 0"
+                  :likes-count="post.likes_count ?? 0"
+                  :comments-count="post.comments_count ?? 0"
+                />
 
                 <span class="meta-item">
                   📅 {{ formatDate(post.created_at) }}
@@ -939,6 +945,10 @@ onMounted(async () => {
   align-items: center;
   flex-wrap: wrap;
   gap: 1.25rem;
+}
+
+.post-meta :deep(.post-interaction-bar--list) {
+  margin-top: 0;
 }
 
 .meta-item {

@@ -1,9 +1,11 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../services/api'
 import { likePost, recordView, unlikePost } from '../services/postService'
 import { useAuthStore } from '../stores/auth'
+import PostInteractionBar from '../components/PostInteractionBar.vue'
+import PostComments from '../components/PostComments.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,6 +16,8 @@ const isLoading = ref(true)
 const errorMessage = ref('')
 const likeActionError = ref('')
 const isLiking = ref(false)
+const postCommentsRef = ref(null)
+const commentsFocusAppliedFor = ref('')
 
 const loadPost = async () => {
   isLoading.value = true
@@ -198,6 +202,70 @@ const toggleLike = async () => {
   }
 }
 
+const handleCommentsCountUpdate = (count) => {
+  if (!post.value || typeof count !== 'number') {
+    return
+  }
+
+  post.value = {
+    ...post.value,
+    comments_count: count,
+  }
+}
+
+const tryApplyCommentsFocus = async () => {
+  if (route.query.focus !== 'comments') {
+    return
+  }
+
+  if (commentsFocusAppliedFor.value === route.fullPath) {
+    return
+  }
+
+  if (isLoading.value || !post.value || post.value.status !== 'published') {
+    return
+  }
+
+  await nextTick()
+
+  const commentsSection = document.getElementById('post-comments-section')
+
+  if (commentsSection) {
+    commentsSection.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
+  if (
+    authStore.isAuthenticated &&
+    !authStore.isAdmin &&
+    authStore.user?.role === 'user'
+  ) {
+    await nextTick()
+    postCommentsRef.value?.focusCommentInput?.()
+  }
+
+  commentsFocusAppliedFor.value = route.fullPath
+}
+
+const handleCommentsReady = async () => {
+  await tryApplyCommentsFocus()
+}
+
+watch(
+  () => route.fullPath,
+  async (newPath, oldPath) => {
+    if (newPath !== oldPath) {
+      commentsFocusAppliedFor.value = ''
+
+      if (route.query.focus === 'comments') {
+        await tryApplyCommentsFocus()
+      }
+    }
+  },
+)
+
 onMounted(async () => {
   if (authStore.isAuthenticated && !authStore.user) {
     try {
@@ -319,106 +387,17 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="interaction-toolbar">
-            <div class="toolbar-stat">
-              <svg
-                class="toolbar-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="3"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                />
-              </svg>
-
-              <span class="toolbar-stat-value">{{ post.views_count ?? 0 }}</span>
-              <span class="toolbar-stat-label">görüntülenme</span>
-            </div>
-
-            <button
-              v-if="canLikePost"
-              type="button"
-              class="like-control like-control-detail"
-              :class="{ 'is-liked': post.is_liked_by_current_user }"
-              :disabled="isLiking"
-              :aria-label="likeAriaLabel"
-              :aria-pressed="post.is_liked_by_current_user"
-              :title="likeAriaLabel"
-              @click="toggleLike"
-            >
-              <svg
-                v-if="post.is_liked_by_current_user"
-                class="heart-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                  fill="currentColor"
-                />
-              </svg>
-
-              <svg
-                v-else
-                class="heart-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-
-              <span class="toolbar-stat-value">{{ post.likes_count ?? 0 }}</span>
-              <span class="toolbar-stat-label">beğeni</span>
-            </button>
-
-            <div
-              v-else
-              class="toolbar-stat toolbar-stat-like"
-              :title="`${post.likes_count ?? 0} beğeni`"
-            >
-              <svg
-                class="heart-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-
-              <span class="toolbar-stat-value">{{ post.likes_count ?? 0 }}</span>
-              <span class="toolbar-stat-label">beğeni</span>
-            </div>
-          </div>
+          <PostInteractionBar
+            variant="detail"
+            :views-count="post.views_count ?? 0"
+            :likes-count="post.likes_count ?? 0"
+            :comments-count="post.comments_count ?? 0"
+            :is-liked="Boolean(post.is_liked_by_current_user)"
+            :can-like="canLikePost"
+            :is-liking="isLiking"
+            :like-aria-label="likeAriaLabel"
+            @toggle-like="toggleLike"
+          />
 
           <div
             v-if="likeActionError"
@@ -449,7 +428,15 @@ onMounted(async () => {
           </div>
         </div>
 
-        
+        <PostComments
+          v-if="post.status === 'published'"
+          ref="postCommentsRef"
+          :post-id="post.id"
+          :post-status="post.status"
+          :initial-comments-count="post.comments_count ?? 0"
+          @update:comments-count="handleCommentsCountUpdate"
+          @ready="handleCommentsReady"
+        />
       </article>
     </div>
   </div>
@@ -693,95 +680,6 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-.interaction-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-  padding: 0.65rem 0.85rem;
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-}
-
-.toolbar-stat {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: #64748b;
-  font-size: 0.875rem;
-  line-height: 1;
-}
-
-.toolbar-stat-like {
-  color: #94a3b8;
-}
-
-.toolbar-icon,
-.heart-icon {
-  width: 17px;
-  height: 17px;
-  flex-shrink: 0;
-}
-
-.toolbar-stat-value {
-  color: #334155;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.toolbar-stat-label {
-  color: #94a3b8;
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
-.like-control-detail {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.65rem;
-  color: #64748b;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.like-control-detail:hover:not(:disabled) {
-  color: #475569;
-  background-color: #ffffff;
-  border-color: #cbd5e0;
-}
-
-.like-control-detail.is-liked {
-  color: #e11d48;
-  background-color: #fff1f2;
-  border-color: #fecdd3;
-}
-
-.like-control-detail.is-liked:hover:not(:disabled) {
-  background-color: #ffe4e6;
-  border-color: #fda4af;
-}
-
-.like-control-detail:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.like-control-detail:focus-visible {
-  outline: 2px solid #4f6ef7;
-  outline-offset: 2px;
-}
-
 .like-action-error {
   margin-top: 0.85rem;
   padding: 0.85rem 1rem;
@@ -888,10 +786,6 @@ onMounted(async () => {
     align-items: flex-start;
     flex-direction: column;
     gap: 1rem;
-  }
-
-  .interaction-toolbar {
-    width: 100%;
   }
 
   .featured-image-wrapper,

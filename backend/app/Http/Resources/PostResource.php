@@ -40,6 +40,8 @@ class PostResource extends JsonResource
 
             'likes_count' => $this->whenCounted('likes', fn () => (int) $this->likes_count),
 
+            'comments_count' => $this->whenCounted('comments', fn () => (int) $this->comments_count),
+
             'is_liked_by_current_user' => $this->resolveIsLikedByCurrentUser($request),
 
             'created_at' => $this->created_at,
