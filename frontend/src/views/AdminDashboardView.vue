@@ -11,9 +11,6 @@ const dashboardData = ref({
     posts_pending: 0,
     posts_rejected: 0,
     posts_draft: 0,
-    categories_total: 0,
-    categories_active: 0,
-    views_total: 0,
   },
   recent_pending_posts: [],
 })
@@ -28,9 +25,6 @@ const summaryCards = [
   { key: 'posts_pending', label: 'Onay Bekleyen' },
   { key: 'posts_rejected', label: 'Reddedilen' },
   { key: 'posts_draft', label: 'Taslak' },
-  { key: 'categories_total', label: 'Toplam Kategori' },
-  { key: 'categories_active', label: 'Aktif Kategori' },
-  { key: 'views_total', label: 'Toplam Görüntülenme' },
 ]
 
 const formatDate = (date) => {
@@ -286,7 +280,7 @@ onMounted(() => {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -406,6 +400,12 @@ onMounted(() => {
   background-color: #e0e7ff;
 }
 
+@media (max-width: 1024px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
   .admin-dashboard-page {
     padding: 1.25rem 1rem;
@@ -414,6 +414,10 @@ onMounted(() => {
   .page-header,
   .panel {
     padding: 1.25rem;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
   }
 
   .summary-value {

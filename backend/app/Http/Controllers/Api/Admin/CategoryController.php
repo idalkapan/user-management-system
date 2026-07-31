@@ -27,8 +27,24 @@ class CategoryController extends Controller
 
         return response()->json([
             'message' => 'Kategoriler başarıyla listelendi.',
+            'summary' => $this->buildCategorySummary(),
             'categories' => CategoryResource::collection($categories),
         ]);
+    }
+
+    /**
+     * Kategori envanter özetini döndürür.
+     *
+     * @return array<string, int>
+     */
+    private function buildCategorySummary(): array
+    {
+        return [
+            'total_categories' => Category::count(),
+            'active_categories' => Category::where('is_active', true)->count(),
+            'inactive_categories' => Category::where('is_active', false)->count(),
+            'unused_categories' => Category::whereDoesntHave('posts')->count(),
+        ];
     }
 
     /**

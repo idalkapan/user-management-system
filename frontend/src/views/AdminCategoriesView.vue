@@ -36,17 +36,89 @@
         {{ errorMessage }}
       </div>
 
+      <section
+        v-if="!isLoading"
+        class="summary-strip"
+        aria-label="Kategori envanteri özeti"
+      >
+        <article
+          v-for="card in summaryCards"
+          :key="card.key"
+          class="summary-card"
+        >
+          <span class="summary-card-label">{{ card.label }}</span>
+          <strong class="summary-card-value">{{ summary[card.key] ?? 0 }}</strong>
+        </article>
+      </section>
+
       <section class="panel">
         <div class="panel-head">
           <div>
             <h2>Kategori Listesi</h2>
-            <p>Tüm kategorileri görüntüleyin ve yönetin.</p>
+            <p>Tüm kategorileri görüntüleyin, arayın ve yönetin.</p>
           </div>
+        </div>
+
+        <div
+          v-if="!isLoading && categories.length > 0"
+          class="filters-bar"
+        >
+          <label class="filter-field filter-search">
+            <span class="visually-hidden">Kategori ara</span>
+            <input
+              v-model="searchQuery"
+              type="search"
+              placeholder="Ad, slug veya açıklama ara..."
+              aria-label="Kategori ara"
+            >
+          </label>
+
+          <label class="filter-field">
+            <span class="filter-label">Durum</span>
+            <select
+              v-model="statusFilter"
+              aria-label="Durum filtresi"
+            >
+              <option value="all">Tümü</option>
+              <option value="active">Aktif</option>
+              <option value="inactive">Pasif</option>
+            </select>
+          </label>
+
+          <label class="filter-field">
+            <span class="filter-label">Kullanım</span>
+            <select
+              v-model="usageFilter"
+              aria-label="Kullanım filtresi"
+            >
+              <option value="all">Tümü</option>
+              <option value="used">Kullanılan</option>
+              <option value="unused">Kullanılmayan</option>
+            </select>
+          </label>
+
+          <label class="filter-field">
+            <span class="filter-label">Sıralama</span>
+            <select
+              v-model="sortBy"
+              aria-label="Sıralama"
+            >
+              <option value="default">Varsayılan sıra</option>
+              <option value="name_asc">Ada göre A–Z</option>
+              <option value="name_desc">Ada göre Z–A</option>
+              <option value="posts_desc">En çok kullanılan</option>
+              <option value="posts_asc">En az kullanılan</option>
+              <option value="newest">En yeni</option>
+              <option value="oldest">En eski</option>
+            </select>
+          </label>
         </div>
 
         <div
           v-if="isLoading"
           class="loading-state"
+          role="status"
+          aria-live="polite"
         >
           Kategoriler yükleniyor...
         </div>
@@ -60,44 +132,58 @@
         </div>
 
         <div
+          v-else-if="emptyStateType === 'search'"
+          class="empty-state"
+        >
+          <h2>Arama sonucu bulunamadı.</h2>
+          <p>Farklı bir anahtar kelime deneyin veya filtreleri temizleyin.</p>
+        </div>
+
+        <div
+          v-else-if="emptyStateType === 'filter'"
+          class="empty-state"
+        >
+          <h2>Filtre sonucu bulunamadı.</h2>
+          <p>Seçili filtrelere uygun kategori bulunmuyor.</p>
+        </div>
+
+        <div
           v-else
           class="table-wrapper"
         >
           <table class="categories-table">
             <thead>
               <tr>
-                <th>Kategori</th>
-                <th>Açıklama</th>
-                <th>Yazı Sayısı</th>
-                <th>Durum</th>
-                <th>İşlemler</th>
+                <th scope="col">Kategori</th>
+                <th scope="col">Durum</th>
+                <th scope="col">Kullanım</th>
+                <th scope="col">Son Güncelleme</th>
+                <th
+                  scope="col"
+                  class="col-actions"
+                >
+                  İşlemler
+                </th>
               </tr>
             </thead>
 
             <tbody>
               <tr
-                v-for="category in categories"
+                v-for="category in filteredCategories"
                 :key="category.id"
               >
                 <td
                   data-label="Kategori"
-                  class="category-name"
+                  class="category-cell"
                 >
-                  {{ category.name }}
-                </td>
-
-                <td data-label="Açıklama">
-                  {{ category.description || '—' }}
-                </td>
-
-                <td data-label="Yazı Sayısı">
-                  <button
-                    type="button"
-                    class="posts-count-button"
-                    @click="openCategoryPostsModal(category)"
+                  <span class="category-name">{{ category.name }}</span>
+                  <span
+                    v-if="category.description"
+                    class="category-description"
+                    :title="category.description"
                   >
-                    {{ category.posts_count ?? 0 }}
-                  </button>
+                    {{ category.description }}
+                  </span>
                 </td>
 
                 <td data-label="Durum">
@@ -109,24 +195,80 @@
                         : 'status-badge-inactive',
                     ]"
                   >
+                    <span
+                      class="status-dot"
+                      aria-hidden="true"
+                    />
                     {{ category.is_active ? 'Aktif' : 'Pasif' }}
                   </span>
                 </td>
 
-                <td data-label="İşlemler">
+                <td data-label="Kullanım">
+                  <button
+                    v-if="(category.posts_count ?? 0) > 0"
+                    type="button"
+                    class="usage-badge usage-badge--linked"
+                    :title="`${category.posts_count} yazıyı görüntüle`"
+                    @click="openCategoryPostsModal(category)"
+                  >
+                    {{ formatPostsUsage(category.posts_count) }}
+                  </button>
+                  <span
+                    v-else
+                    class="usage-badge usage-badge--unused"
+                  >
+                    Kullanılmıyor
+                  </span>
+                </td>
+
+                <td
+                  data-label="Son Güncelleme"
+                  class="updated-cell"
+                >
+                  {{ formatUpdatedDate(category) }}
+                </td>
+
+                <td
+                  data-label="İşlemler"
+                  class="actions-cell"
+                >
                   <div class="row-actions">
                     <button
                       type="button"
-                      class="action-button action-edit"
+                      class="icon-action icon-action-edit"
+                      title="Düzenle"
+                      aria-label="Düzenle"
                       :disabled="isSubmitting || isDeleting || statusUpdatingId !== null"
                       @click="openEditModal(category)"
                     >
-                      Düzenle
+                      <svg
+                        viewBox="0 0 20 20"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-9.5 9.5a1 1 0 0 1-.447.264l-3.5 1a1 1 0 0 1-1.213-1.213l1-3.5a1 1 0 0 1 .264-.447l9.5-9.5Z"
+                          fill="currentColor"
+                        />
+                      </svg>
                     </button>
 
                     <button
                       type="button"
-                      class="action-button action-status"
+                      class="icon-action icon-action-status"
+                      :title="
+                        statusUpdatingId === category.id
+                          ? 'Güncelleniyor'
+                          : category.is_active
+                            ? 'Pasif yap'
+                            : 'Aktif yap'
+                      "
+                      :aria-label="
+                        statusUpdatingId === category.id
+                          ? 'Güncelleniyor'
+                          : category.is_active
+                            ? 'Pasif yap'
+                            : 'Aktif yap'
+                      "
                       :disabled="
                         statusUpdatingId === category.id
                           || isSubmitting
@@ -134,26 +276,47 @@
                       "
                       @click="toggleCategoryStatus(category)"
                     >
-                      {{
-                        statusUpdatingId === category.id
-                          ? 'Güncelleniyor...'
-                          : category.is_active
-                            ? 'Pasif Yap'
-                            : 'Aktif Yap'
-                      }}
+                      <svg
+                        viewBox="0 0 20 20"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M10 3a7 7 0 1 0 0 14A7 7 0 0 0 10 3Zm0 2a1 1 0 0 1 1 1v2.382l1.447 1.447a1 1 0 0 1-1.414 1.414l-2-2A1 1 0 0 1 9 10V6a1 1 0 0 1 1-1Z"
+                          fill="currentColor"
+                        />
+                      </svg>
                     </button>
 
                     <button
                       type="button"
-                      class="action-button action-delete"
+                      class="icon-action icon-action-delete"
+                      :title="
+                        (category.posts_count ?? 0) > 0
+                          ? 'Bu kategori yazılarda kullanıldığı için silinemez'
+                          : 'Sil'
+                      "
+                      :aria-label="
+                        (category.posts_count ?? 0) > 0
+                          ? 'Bu kategori yazılarda kullanıldığı için silinemez'
+                          : 'Sil'
+                      "
                       :disabled="
                         isSubmitting
                           || isDeleting
                           || statusUpdatingId !== null
+                          || (category.posts_count ?? 0) > 0
                       "
                       @click="openDeleteModal(category)"
                     >
-                      Sil
+                      <svg
+                        viewBox="0 0 20 20"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M7 3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1h3a1 1 0 1 1 0 2h-1v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5H4a1 1 0 1 1 0-2h3ZM8 5v11h4V5H8Zm2 2a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0V8a1 1 0 0 1 1-1Zm3 0a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0V8a1 1 0 0 1 1-1Z"
+                          fill="currentColor"
+                        />
+                      </svg>
                     </button>
                   </div>
                 </td>
@@ -472,7 +635,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   createCategory,
   deleteCategory,
@@ -484,9 +647,27 @@ import {
 } from '../services/categoryService'
 
 const categories = ref([])
+const summary = ref({
+  total_categories: 0,
+  active_categories: 0,
+  inactive_categories: 0,
+  unused_categories: 0,
+})
 const isLoading = ref(true)
 const errorMessage = ref('')
 const successMessage = ref('')
+
+const searchQuery = ref('')
+const statusFilter = ref('all')
+const usageFilter = ref('all')
+const sortBy = ref('default')
+
+const summaryCards = [
+  { key: 'total_categories', label: 'Toplam Kategori' },
+  { key: 'active_categories', label: 'Aktif Kategori' },
+  { key: 'inactive_categories', label: 'Pasif Kategori' },
+  { key: 'unused_categories', label: 'Kullanılmayan Kategori' },
+]
 
 const isFormModalOpen = ref(false)
 const isDeleteModalOpen = ref(false)
@@ -517,24 +698,127 @@ const defaultForm = () => ({
 
 const form = ref(defaultForm())
 
+const parseCategoriesResponse = (response) => {
+  const raw = response.data?.categories
+
+  if (Array.isArray(raw)) {
+    return raw
+  }
+
+  if (Array.isArray(raw?.data)) {
+    return raw.data
+  }
+
+  if (Array.isArray(response.data?.data)) {
+    return response.data.data
+  }
+
+  return []
+}
+
+const parseSummaryResponse = (response) => ({
+  total_categories: response.data?.summary?.total_categories ?? 0,
+  active_categories: response.data?.summary?.active_categories ?? 0,
+  inactive_categories: response.data?.summary?.inactive_categories ?? 0,
+  unused_categories: response.data?.summary?.unused_categories ?? 0,
+})
+
+const filteredCategories = computed(() => {
+  let result = [...categories.value]
+  const query = searchQuery.value.trim().toLowerCase()
+
+  if (query) {
+    result = result.filter((category) =>
+      category.name?.toLowerCase().includes(query)
+      || category.slug?.toLowerCase().includes(query)
+      || (category.description ?? '').toLowerCase().includes(query),
+    )
+  }
+
+  if (statusFilter.value === 'active') {
+    result = result.filter((category) => category.is_active)
+  } else if (statusFilter.value === 'inactive') {
+    result = result.filter((category) => !category.is_active)
+  }
+
+  if (usageFilter.value === 'used') {
+    result = result.filter((category) => (category.posts_count ?? 0) > 0)
+  } else if (usageFilter.value === 'unused') {
+    result = result.filter((category) => (category.posts_count ?? 0) === 0)
+  }
+
+  switch (sortBy.value) {
+    case 'name_asc':
+      result.sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+      break
+    case 'name_desc':
+      result.sort((a, b) => b.name.localeCompare(a.name, 'tr'))
+      break
+    case 'posts_desc':
+      result.sort(
+        (a, b) => (b.posts_count ?? 0) - (a.posts_count ?? 0),
+      )
+      break
+    case 'posts_asc':
+      result.sort(
+        (a, b) => (a.posts_count ?? 0) - (b.posts_count ?? 0),
+      )
+      break
+    case 'newest':
+      result.sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at),
+      )
+      break
+    case 'oldest':
+      result.sort(
+        (a, b) => new Date(a.created_at) - new Date(b.created_at),
+      )
+      break
+    default:
+      result.sort((a, b) => {
+        const orderDiff = (a.sort_order ?? 0) - (b.sort_order ?? 0)
+
+        if (orderDiff !== 0) {
+          return orderDiff
+        }
+
+        return a.name.localeCompare(b.name, 'tr')
+      })
+  }
+
+  return result
+})
+
+const emptyStateType = computed(() => {
+  if (categories.value.length === 0) {
+    return null
+  }
+
+  if (filteredCategories.value.length > 0) {
+    return null
+  }
+
+  if (searchQuery.value.trim()) {
+    return 'search'
+  }
+
+  return 'filter'
+})
+
 const resetForm = () => {
   form.value = defaultForm()
 }
 
 const loadCategories = async () => {
   isLoading.value = true
+  errorMessage.value = ''
 
   try {
     const response = await getAdminCategories()
 
-    categories.value =
-      response.data.data ??
-      response.data.categories ??
-      response.data ??
-      []
+    categories.value = parseCategoriesResponse(response)
+    summary.value = parseSummaryResponse(response)
   } catch (error) {
-    console.error('Kategoriler alınamadı:', error)
-
     errorMessage.value =
       error.response?.data?.message ??
       'Kategoriler yüklenemedi.'
@@ -767,6 +1051,30 @@ const confirmRestore = async () => {
   }
 }
 
+const formatUpdatedDate = (category) => {
+  const date = category.updated_at || category.created_at
+
+  if (!date) {
+    return '—'
+  }
+
+  return new Intl.DateTimeFormat('tr-TR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(date))
+}
+
+const formatPostsUsage = (count) => {
+  const total = Number(count ?? 0)
+
+  if (total === 1) {
+    return '1 Yazı'
+  }
+
+  return `${total} Yazı`
+}
+
 const formatDate = (date) => {
   if (!date) {
     return '—'
@@ -904,6 +1212,104 @@ onMounted(() => {
   border: 1px solid #fecaca;
 }
 
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.15rem;
+}
+
+.summary-card {
+  padding: 0.85rem 1rem;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.summary-card-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.summary-card-value {
+  color: #1e293b;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #fcfdff;
+}
+
+.filter-search {
+  flex: 1 1 280px;
+  min-width: 220px;
+}
+
+.filter-field:not(.filter-search) {
+  flex: 0 1 160px;
+  min-width: 140px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.filter-label {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.filter-field input,
+.filter-field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #1e293b;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.filter-field input:focus,
+.filter-field select:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .panel {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
@@ -966,77 +1372,195 @@ onMounted(() => {
 
 .categories-table th,
 .categories-table td {
-  padding: 1.05rem 1.5rem;
+  padding: 0.85rem 1.15rem;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
   vertical-align: middle;
 }
 
 .categories-table th {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #64748b;
-}
-
-.categories-table tbody tr {
-  transition: background-color 0.2s ease;
+  color: #94a3b8;
 }
 
 .categories-table tbody tr:hover {
-  background-color: #f8fafc;
-}
-
-.categories-table tbody tr:last-child td {
-  border-bottom: none;
+  background-color: #fafbfc;
 }
 
 .category-name {
+  display: block;
   font-weight: 600;
   color: #1e293b;
+  font-size: 0.9375rem;
 }
 
-.posts-count-button {
-  padding: 0;
-  border: none;
-  background: none;
+.category-cell {
+  min-width: 220px;
+  max-width: 360px;
+}
+
+.category-description {
+  display: -webkit-box;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.updated-cell {
+  color: #64748b;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.col-actions,
+.actions-cell {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.usage-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.usage-badge--linked {
+  border: 1px solid #c7d2fe;
   color: #4338ca;
-  font: inherit;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  background-color: #eef2ff;
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
-.posts-count-button:hover {
-  color: #3730a3;
+.usage-badge--linked:hover {
+  background-color: #e0e7ff;
+}
+
+.usage-badge--unused {
+  border: 1px solid #e2e8f0;
+  color: #94a3b8;
+  background-color: #f8fafc;
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.28rem 0.7rem;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem;
   border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 600;
   white-space: nowrap;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .status-badge-active {
   color: #166534;
-  background-color: #dcfce7;
+  background-color: #ecfdf5;
+  border: 1px solid #bbf7d0;
+}
+
+.status-badge-active .status-dot {
+  background-color: #22c55e;
 }
 
 .status-badge-inactive {
   color: #64748b;
-  background-color: #e2e8f0;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.status-badge-inactive .status-dot {
+  background-color: #94a3b8;
 }
 
 .row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background-color: transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.icon-action svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.icon-action-edit {
+  color: #4338ca;
+  border-color: #e0e7ff;
+  background-color: #f5f7ff;
+}
+
+.icon-action-edit:hover:not(:disabled) {
+  background-color: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.icon-action-status {
+  color: #475569;
+  border-color: #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.icon-action-status:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.icon-action-delete {
+  color: #dc2626;
+  border-color: #fecaca;
+  background-color: #fef2f2;
+}
+
+.icon-action-delete:hover:not(:disabled) {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.icon-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.icon-action:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
 }
 
 .primary-button,
@@ -1269,6 +1793,21 @@ onMounted(() => {
   border-radius: 8px;
 }
 
+@media (max-width: 1024px) {
+  .summary-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-search {
+    flex: 1 1 100%;
+  }
+
+  .filter-field:not(.filter-search) {
+    flex: 1 1 calc(33.333% - 0.5rem);
+    min-width: 120px;
+  }
+}
+
 @media (max-width: 768px) {
   .admin-categories-page {
     padding: 1.25rem 1rem;
@@ -1287,58 +1826,38 @@ onMounted(() => {
     width: 100%;
   }
 
+  .summary-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters-bar {
+    padding: 1rem 1.15rem;
+  }
+
+  .filter-field:not(.filter-search) {
+    flex: 1 1 calc(50% - 0.375rem);
+  }
+
   .panel-head {
     padding: 1rem 1.15rem;
   }
 
-  .categories-table thead {
-    display: none;
+  .table-wrapper {
+    -webkit-overflow-scrolling: touch;
   }
 
-  .categories-table tbody,
-  .categories-table tr,
+  .categories-table {
+    min-width: 680px;
+  }
+
+  .categories-table th,
   .categories-table td {
-    display: block;
-    width: 100%;
+    padding: 0.75rem 1rem;
   }
 
-  .categories-table tr {
-    margin-bottom: 1rem;
-    padding: 0.25rem 0;
-    border-bottom: 1px solid #e2e8f0;
-  }
-
-  .categories-table td {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.75rem 1.25rem;
-    border-bottom: none;
-    text-align: right;
-  }
-
-  .categories-table td::before {
-    content: attr(data-label);
-    font-weight: 700;
-    color: #64748b;
-    text-align: left;
-  }
-
-  .categories-table td[data-label='İşlemler'] {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .categories-table td[data-label='İşlemler']::before {
-    margin-bottom: 0.25rem;
-  }
-
-  .row-actions {
-    flex-direction: column;
-  }
-
-  .action-button {
-    width: 100%;
+  .category-cell {
+    min-width: 180px;
+    max-width: 260px;
   }
 }
 </style>

@@ -657,9 +657,6 @@ class PostController extends Controller
                 'posts_pending' => $postsPending,
                 'posts_rejected' => $postsRejected,
                 'posts_draft' => $postsDraft,
-                'categories_total' => Category::count(),
-                'categories_active' => Category::where('is_active', true)->count(),
-                'views_total' => PostView::count(),
             ],
             'recent_pending_posts' => $recentPendingPosts,
         ]);
