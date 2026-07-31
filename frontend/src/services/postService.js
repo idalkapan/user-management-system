@@ -39,10 +39,14 @@ export const getAdminDashboard = () => {
   return api.get('/admin/dashboard')
 }
 
-export const getMyStatistics = () => {
-  return api.get('/my-statistics')
+export const getMyStatistics = (period = '30d') => {
+  return api.get('/my-statistics', {
+    params: { period },
+  })
 }
 
-export const getAdminStatistics = () => {
-  return api.get('/admin/statistics')
+export const getAdminStatistics = (period = '30d') => {
+  return api.get('/admin/statistics', {
+    params: { period },
+  })
 }
