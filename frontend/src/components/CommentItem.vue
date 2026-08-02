@@ -9,6 +9,23 @@ import {
   unlikeComment,
   updateComment,
 } from '../services/commentService'
+import { reportComment } from '../services/commentReportService'
+
+const REPORT_REASONS = [
+  { value: 'spam', label: 'Spam / Reklam' },
+  { value: 'harassment', label: 'Taciz veya Zorbalık' },
+  { value: 'hate_speech', label: 'Nefret Söylemi' },
+  { value: 'inappropriate', label: 'Uygunsuz İçerik' },
+  { value: 'misinformation', label: 'Yanıltıcı Bilgi' },
+  { value: 'other', label: 'Diğer' },
+]
+
+const MAX_REPORT_DESCRIPTION_LENGTH = 500
+
+const normalizeComment = (comment) => ({
+  ...comment,
+  is_reported_by_current_user: Boolean(comment?.is_reported_by_current_user),
+})
 
 const props = defineProps({
   comment: {
@@ -35,7 +52,7 @@ const emit = defineEmits([
 
 const authStore = useAuthStore()
 
-const localComment = ref({ ...props.comment })
+const localComment = ref(normalizeComment(props.comment))
 const isEditing = ref(false)
 const editContent = ref('')
 const actionError = ref('')
@@ -43,6 +60,12 @@ const likeError = ref('')
 const isSubmitting = ref(false)
 const isLiking = ref(false)
 const isDeleteModalOpen = ref(false)
+const isReportModalOpen = ref(false)
+const reportReason = ref('')
+const reportDescription = ref('')
+const reportError = ref('')
+const reportSuccessMessage = ref('')
+const isSubmittingReport = ref(false)
 
 const activeReplyTarget = ref(null)
 const replyContent = ref('')
@@ -65,7 +88,7 @@ const repliesPagination = ref({
 watch(
   () => props.comment,
   (nextComment) => {
-    localComment.value = { ...nextComment }
+    localComment.value = normalizeComment(nextComment)
   },
   { deep: true },
 )
@@ -106,6 +129,30 @@ const canDelete = computed(() => {
 
   return authStore.user?.id === localComment.value.author?.id
 })
+
+const isReportedByCurrentUser = computed(
+  () => Boolean(localComment.value.is_reported_by_current_user),
+)
+
+const canReport = computed(
+  () =>
+    authStore.isAuthenticated &&
+    !authStore.isAdmin &&
+    authStore.user?.role === 'user' &&
+    authStore.user?.id !== localComment.value.author?.id,
+)
+
+const showReportButton = computed(
+  () => canReport.value && !isReportedByCurrentUser.value,
+)
+
+const showReportedBadge = computed(
+  () => canReport.value && isReportedByCurrentUser.value,
+)
+
+const reportDescriptionLength = computed(
+  () => reportDescription.value.length,
+)
 
 const likeAriaLabel = computed(() =>
   localComment.value.is_liked_by_current_user
@@ -153,6 +200,116 @@ const formatDate = (date) => {
 
 const setBusy = (value) => {
   emit('busy-change', value)
+}
+
+const getReportErrorMessage = (error) => {
+  const data = error.response?.data
+
+  if (data?.message) {
+    return data.message
+  }
+
+  if (data?.errors?.reason?.[0]) {
+    return data.errors.reason[0]
+  }
+
+  if (data?.errors?.description?.[0]) {
+    return data.errors.description[0]
+  }
+
+  if (!error.response) {
+    return 'Bağlantı hatası oluştu. Lütfen tekrar deneyin.'
+  }
+
+  return 'Şikâyet gönderilirken bir hata oluştu.'
+}
+
+const resetReportForm = () => {
+  reportReason.value = ''
+  reportDescription.value = ''
+  reportError.value = ''
+}
+
+const openReportModal = () => {
+  if (!showReportButton.value || isSubmittingReport.value) {
+    return
+  }
+
+  reportSuccessMessage.value = ''
+  reportError.value = ''
+  isReportModalOpen.value = true
+}
+
+const closeReportModal = () => {
+  if (isSubmittingReport.value) {
+    return
+  }
+
+  isReportModalOpen.value = false
+  resetReportForm()
+}
+
+const markCommentAsReported = () => {
+  localComment.value = {
+    ...localComment.value,
+    is_reported_by_current_user: true,
+  }
+}
+
+const submitReport = async () => {
+  if (!showReportButton.value || isSubmittingReport.value) {
+    return
+  }
+
+  if (!reportReason.value) {
+    reportError.value = 'Şikâyet nedeni seçilmelidir.'
+    return
+  }
+
+  if (reportDescription.value.length > MAX_REPORT_DESCRIPTION_LENGTH) {
+    reportError.value = 'Açıklama en fazla 500 karakter olabilir.'
+    return
+  }
+
+  reportError.value = ''
+  reportSuccessMessage.value = ''
+  isSubmittingReport.value = true
+  setBusy(true)
+
+  try {
+    const payload = {
+      reason: reportReason.value,
+    }
+
+    const trimmedDescription = reportDescription.value.trim()
+
+    if (trimmedDescription) {
+      payload.description = trimmedDescription
+    }
+
+    const response = await reportComment(localComment.value.id, payload)
+
+    markCommentAsReported()
+    isReportModalOpen.value = false
+    resetReportForm()
+    reportSuccessMessage.value =
+      response.data?.message || 'Şikâyetiniz başarıyla alındı.'
+  } catch (error) {
+    const status = error.response?.status
+    const message = getReportErrorMessage(error)
+
+    reportError.value = message
+
+    if (status === 422 && message.includes('zaten şikâyet')) {
+      markCommentAsReported()
+      isReportModalOpen.value = false
+      resetReportForm()
+      reportSuccessMessage.value = message
+    }
+  } finally {
+    isSubmittingReport.value = false
+    setBusy(false)
+  }
 }
 
 const startEdit = () => {
@@ -644,12 +801,36 @@ const handleReplyDeleted = ({ commentId, commentsCount }) => {
         v-if="canReply"
         type="button"
         class="comment-reply-button"
-        :disabled="isBusy || isSubmitting || isSubmittingReply"
+        :disabled="isBusy || isSubmitting || isSubmittingReply || isSubmittingReport"
         @click="openReplyForm(localComment)"
       >
         Yanıtla
       </button>
+
+      <button
+        v-if="showReportButton"
+        type="button"
+        class="comment-report-button"
+        :disabled="isBusy || isSubmitting || isSubmittingReply || isSubmittingReport"
+        @click="openReportModal"
+      >
+        Şikâyet Et
+      </button>
+
+      <span
+        v-if="showReportedBadge"
+        class="comment-reported-badge"
+      >
+        Şikâyet Edildi
+      </span>
     </div>
+
+    <p
+      v-if="reportSuccessMessage"
+      class="comment-success"
+    >
+      {{ reportSuccessMessage }}
+    </p>
 
     <p
       v-if="likeError"
@@ -779,6 +960,87 @@ const handleReplyDeleted = ({ commentId, commentsCount }) => {
           {{ repliesLoading ? 'Yükleniyor...' : 'Daha fazla yanıt göster' }}
         </button>
       </template>
+    </div>
+
+    <div
+      v-if="isReportModalOpen"
+      class="comment-modal-overlay"
+      @click.self="closeReportModal"
+    >
+      <div class="comment-modal comment-report-modal">
+        <h3>Yorumu Şikâyet Et</h3>
+
+        <p class="comment-report-modal-description">
+          Bu yorumu neden şikâyet ettiğinizi belirtin.
+        </p>
+
+        <fieldset class="comment-report-reasons">
+          <legend class="visually-hidden">Şikâyet nedeni</legend>
+
+          <label
+            v-for="reason in REPORT_REASONS"
+            :key="reason.value"
+            class="comment-report-reason-option"
+          >
+            <input
+              v-model="reportReason"
+              type="radio"
+              name="report-reason"
+              :value="reason.value"
+              :disabled="isSubmittingReport"
+            >
+            <span>{{ reason.label }}</span>
+          </label>
+        </fieldset>
+
+        <label
+          class="comment-report-description-label"
+          for="report-description"
+        >
+          Açıklama (isteğe bağlı)
+        </label>
+
+        <textarea
+          id="report-description"
+          v-model="reportDescription"
+          class="comment-textarea"
+          rows="4"
+          maxlength="500"
+          placeholder="Ek açıklama yazabilirsiniz..."
+          :disabled="isSubmittingReport"
+        />
+
+        <div class="comment-report-description-meta">
+          <span>{{ reportDescriptionLength }}/500</span>
+        </div>
+
+        <p
+          v-if="reportError"
+          class="comment-error comment-report-error"
+        >
+          {{ reportError }}
+        </p>
+
+        <div class="comment-modal-actions">
+          <button
+            type="button"
+            class="comment-secondary-button"
+            :disabled="isSubmittingReport"
+            @click="closeReportModal"
+          >
+            İptal
+          </button>
+
+          <button
+            type="button"
+            class="comment-primary-button"
+            :disabled="isSubmittingReport || !reportReason"
+            @click="submitReport"
+          >
+            {{ isSubmittingReport ? 'Gönderiliyor...' : 'Şikâyeti Gönder' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <div
@@ -1010,6 +1272,7 @@ const handleReplyDeleted = ({ commentId, commentsCount }) => {
 }
 
 .comment-reply-button,
+.comment-report-button,
 .replies-toggle-button,
 .replies-load-more-button {
   padding: 0.25rem 0.45rem;
@@ -1022,16 +1285,109 @@ const handleReplyDeleted = ({ commentId, commentsCount }) => {
 }
 
 .comment-reply-button:hover:not(:disabled),
+.comment-report-button:hover:not(:disabled),
 .replies-toggle-button:hover:not(:disabled),
 .replies-load-more-button:hover:not(:disabled) {
   color: #4f6ef7;
 }
 
+.comment-report-button:hover:not(:disabled) {
+  color: #475569;
+}
+
 .comment-reply-button:disabled,
+.comment-report-button:disabled,
 .replies-toggle-button:disabled,
 .replies-load-more-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.comment-reported-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  color: #64748b;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.comment-success {
+  margin: 0.65rem 0 0;
+  color: #166534;
+  font-size: 0.8125rem;
+}
+
+.comment-report-modal h3 {
+  margin: 0 0 0.5rem;
+  color: #1a1a2e;
+  font-size: 1.05rem;
+}
+
+.comment-report-modal-description {
+  margin: 0 0 1rem;
+  color: #64748b;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.comment-report-reasons {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: none;
+}
+
+.comment-report-reason-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.55rem;
+  color: #475569;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.comment-report-reason-option:last-child {
+  margin-bottom: 0;
+}
+
+.comment-report-reason-option input {
+  margin: 0;
+}
+
+.comment-report-description-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #475569;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.comment-report-description-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.35rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.comment-report-error {
+  margin-top: 0.85rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .reply-form {

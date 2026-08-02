@@ -32,6 +32,10 @@ class PostCommentResource extends JsonResource
                 isset($this->is_liked_by_current_user),
                 (bool) $this->is_liked_by_current_user,
             ),
+            'is_reported_by_current_user' => $this->when(
+                isset($this->is_reported_by_current_user),
+                (bool) $this->is_reported_by_current_user,
+            ),
             'replied_to_user' => $this->when(
                 $this->parent_id !== null && $this->relationLoaded('repliedToUser'),
                 fn () => $this->repliedToUser

@@ -138,6 +138,7 @@ class PostCommentController extends Controller
 
             if ($user->role === 'user') {
                 $comment->setAttribute('is_liked_by_current_user', false);
+                $comment->setAttribute('is_reported_by_current_user', false);
             }
 
             return response()->json([
@@ -202,6 +203,7 @@ class PostCommentController extends Controller
             ]);
             $reply->loadCount('likes');
             $reply->setAttribute('is_liked_by_current_user', false);
+            $reply->setAttribute('is_reported_by_current_user', false);
 
             $rootComment = PostComment::query()
                 ->whereKey($rootId)
@@ -258,6 +260,8 @@ class PostCommentController extends Controller
                     fn ($query) => $query->withExists([
                         'likes as is_liked_by_current_user' => fn (Builder $likeQuery) => $likeQuery
                             ->where('user_id', $request->user()->id),
+                        'reports as is_reported_by_current_user' => fn (Builder $reportQuery) => $reportQuery
+                            ->where('reported_by', $request->user()->id),
                     ]),
                 )
                 ->first();
@@ -315,6 +319,8 @@ class PostCommentController extends Controller
             $query->withExists([
                 'likes as is_liked_by_current_user' => fn (Builder $likeQuery) => $likeQuery
                     ->where('user_id', $user->id),
+                'reports as is_reported_by_current_user' => fn (Builder $reportQuery) => $reportQuery
+                    ->where('reported_by', $user->id),
             ]);
         }
 
