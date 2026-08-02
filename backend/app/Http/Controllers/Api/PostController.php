@@ -61,17 +61,23 @@ class PostController extends Controller
                       ->where('is_active', true);
                 });
                 }
-                
+
+        $perPage = max(1, min(50, (int) $request->input('per_page', 9)));
+
         $posts = $query
             ->latest()
-            ->get();
+            ->paginate($perPage);
 
-        
-    
         return response()->json([
             'message' => 'Yazılar başarıyla listelendi.',
-            'posts' => PostResource::collection($posts),
-            ]);
+            'posts' => PostResource::collection($posts->items()),
+            'meta' => [
+                'current_page' => $posts->currentPage(),
+                'last_page' => $posts->lastPage(),
+                'per_page' => $posts->perPage(),
+                'total' => $posts->total(),
+            ],
+        ]);
     }
 
     /**
@@ -185,16 +191,53 @@ class PostController extends Controller
     }
     public function myPosts(Request $request): JsonResponse
     {
-        $posts = Post::with(['user', 'category'])
-           ->withCount(['views', 'likes', 'comments'])
-           ->where('user_id', $request->user()->id)
-           ->latest()
-           ->get();
+        $userId = $request->user()->id;
+        $allowedStatuses = ['draft', 'pending', 'published', 'rejected'];
+        $status = $request->input('status');
+
+        $query = Post::with(['user', 'category'])
+            ->withCount(['views', 'likes', 'comments'])
+            ->where('user_id', $userId);
+
+        if (
+            is_string($status)
+            && $status !== ''
+            && in_array($status, $allowedStatuses, true)
+        ) {
+            $query->where('status', $status);
+        }
+
+        $perPage = max(1, min(50, (int) $request->input('per_page', 9)));
+
+        $posts = $query
+            ->latest()
+            ->paginate($perPage);
+
+        $statusCounts = Post::query()
+            ->where('user_id', $userId)
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $summary = [
+            'all' => (int) Post::query()->where('user_id', $userId)->count(),
+            'draft' => (int) ($statusCounts['draft'] ?? 0),
+            'pending' => (int) ($statusCounts['pending'] ?? 0),
+            'published' => (int) ($statusCounts['published'] ?? 0),
+            'rejected' => (int) ($statusCounts['rejected'] ?? 0),
+        ];
 
         return response()->json([
             'message' => 'Yazılarınız başarıyla listelendi.',
-            'posts' => PostResource::collection($posts),
-            ]);
+            'posts' => PostResource::collection($posts->items()),
+            'meta' => [
+                'current_page' => $posts->currentPage(),
+                'last_page' => $posts->lastPage(),
+                'per_page' => $posts->perPage(),
+                'total' => $posts->total(),
+            ],
+            'summary' => $summary,
+        ]);
     }
 
     /**
@@ -589,18 +632,26 @@ class PostController extends Controller
     /**
  * Onay bekleyen yazıları listeler.
  */
-    public function pending(): JsonResponse
+    public function pending(Request $request): JsonResponse
     {
+        $perPage = max(1, min(50, (int) $request->input('per_page', 9)));
+
         $posts = Post::with(['user', 'category'])
            ->withCount('views')
            ->where('status', 'pending')
            ->latest()
-           ->get();
+           ->paginate($perPage);
 
         return response()->json([
             'message' => 'Onay bekleyen yazılar başarıyla listelendi.',
-            'posts' => PostResource::collection($posts),
-            ]);
+            'posts' => PostResource::collection($posts->items()),
+            'meta' => [
+                'current_page' => $posts->currentPage(),
+                'last_page' => $posts->lastPage(),
+                'per_page' => $posts->perPage(),
+                'total' => $posts->total(),
+            ],
+        ]);
     }
 
     /**

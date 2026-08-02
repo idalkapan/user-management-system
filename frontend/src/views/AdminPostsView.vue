@@ -2,45 +2,100 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../services/api'
+import { getAdminPendingPosts } from '../services/postService'
+import Pagination from '../components/Pagination.vue'
 
 const router = useRouter()
 
 const posts = ref([])
-const isLoading = ref(true)
+const currentPage = ref(1)
+const lastPage = ref(1)
+const perPage = ref(9)
+const total = ref(0)
+const isInitialLoading = ref(true)
+const isRefreshing = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+const postsListAnchor = ref(null)
 
 const selectedPostId = ref(null)
 const rejectionReason = ref('')
 const isRejectModalOpen = ref(false)
 
-const loadPendingPosts = async () => {
-  isLoading.value = true
-  errorMessage.value = ''
+const parsePostsResponse = (response) => {
+  const raw = response.data?.posts
+
+  if (Array.isArray(raw)) {
+    return raw
+  }
+
+  if (Array.isArray(raw?.data)) {
+    return raw.data
+  }
+
+  if (Array.isArray(response.data?.data)) {
+    return response.data.data
+  }
+
+  return []
+}
+
+const loadPendingPosts = async ({ scrollToList = false } = {}) => {
+  if (isInitialLoading.value) {
+    errorMessage.value = ''
+  } else {
+    isRefreshing.value = true
+  }
 
   try {
-    const response = await api.get('/admin/posts/pending')
+    const response = await getAdminPendingPosts({
+      page: currentPage.value,
+      per_page: perPage.value,
+    })
 
-    const allPosts =
-      response.data.data ??
-      response.data.posts ??
-      response.data ??
-      []
+    posts.value = parsePostsResponse(response)
 
-    console.log('Tüm yazılar:', allPosts)
+    const meta = response.data?.meta ?? {}
 
-    posts.value = allPosts.filter(
-      (post) => post.status === 'pending',
-    )
+    currentPage.value = meta.current_page ?? currentPage.value
+    lastPage.value = meta.last_page ?? 1
+    perPage.value = meta.per_page ?? perPage.value
+    total.value = meta.total ?? 0
+    errorMessage.value = ''
+
+    if (scrollToList) {
+      postsListAnchor.value?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }
   } catch (error) {
-    console.error('Bekleyen yazılar alınamadı:', error)
-
     errorMessage.value =
       error.response?.data?.message ??
       'Bekleyen yazılar yüklenirken bir hata oluştu.'
   } finally {
-    isLoading.value = false
+    isInitialLoading.value = false
+    isRefreshing.value = false
   }
+}
+
+const handlePageChange = (page) => {
+  if (page === currentPage.value || isRefreshing.value) {
+    return
+  }
+
+  currentPage.value = page
+  loadPendingPosts({ scrollToList: true })
+}
+
+const reloadAfterAction = async () => {
+  const wasLastItemOnPage = posts.value.length === 1
+
+  if (wasLastItemOnPage && currentPage.value > 1) {
+    currentPage.value -= 1
+  }
+
+  await loadPendingPosts()
 }
 
 const formatDate = (date) => {
@@ -82,24 +137,18 @@ const rejectPost = async () => {
       },
     )
 
-    posts.value = posts.value.filter(
-      (post) => post.id !== selectedPostId.value,
-    )
-
     isRejectModalOpen.value = false
     selectedPostId.value = null
     rejectionReason.value = ''
 
     successMessage.value = 'Yazı başarıyla reddedildi.'
+    await reloadAfterAction()
   } catch (error) {
-    console.error('Yazı reddedilemedi:', error)
-
     errorMessage.value =
       error.response?.data?.message ??
       'Yazı reddedilirken bir hata oluştu.'
   }
 }
-
 
 const approvePost = async (postId) => {
   errorMessage.value = ''
@@ -108,14 +157,9 @@ const approvePost = async (postId) => {
   try {
     await api.patch(`/admin/posts/${postId}/approve`)
 
-    posts.value = posts.value.filter(
-      (post) => post.id !== postId,
-    )
     successMessage.value = 'Yazı başarıyla onaylandı.'
-  
+    await reloadAfterAction()
   } catch (error) {
-    console.error('Yazı onaylanamadı:', error)
-
     errorMessage.value =
       error.response?.data?.message ??
       'Yazı onaylanırken bir hata oluştu.'
@@ -127,30 +171,30 @@ onMounted(() => {
 })
 </script>
 
-
 <template>
   <div class="admin-posts-page">
     <div class="admin-posts-container">
       <header class="page-header">
-  <div>
-    <h1>Admin Paneli</h1>
-    <p>Onay bekleyen blog yazılarını inceleyin ve yönetin.</p>
-  </div>
+        <div>
+          <h1>Admin Paneli</h1>
+          <p>Onay bekleyen blog yazılarını inceleyin ve yönetin.</p>
+        </div>
 
-  <div class="header-actions">
-    <button
-      type="button"
-      class="refresh-button"
-      :disabled="isLoading"
-      @click="loadPendingPosts"
-    >
-      {{ isLoading ? 'Yenileniyor...' : 'Yenile' }}
-    </button>
-  </div>
-</header>
+        <div class="header-actions">
+          <button
+            type="button"
+            class="refresh-button"
+            :disabled="isInitialLoading || isRefreshing"
+            @click="loadPendingPosts()"
+          >
+            {{ isInitialLoading || isRefreshing ? 'Yenileniyor...' : 'Yenile' }}
+          </button>
+        </div>
+      </header>
+
       <div
-         v-if="successMessage"
-         class="alert alert-success"
+        v-if="successMessage"
+        class="alert alert-success"
       >
         {{ successMessage }}
       </div>
@@ -162,117 +206,136 @@ onMounted(() => {
         {{ errorMessage }}
       </div>
 
-
-
       <div
-        v-if="isLoading"
+        v-if="isInitialLoading"
         class="loading-state"
       >
         Bekleyen yazılar yükleniyor...
       </div>
 
-      <div
-        v-else-if="posts.length === 0"
-        class="empty-state"
-      >
-        <h2>Onay bekleyen yazı bulunamadı</h2>
-        <p>Yeni bir yazı gönderildiğinde burada görüntülenecek.</p>
-      </div>
-
-      <div
-        v-else
-        class="posts-list"
-      >
-        <article
-          v-for="post in posts"
-          :key="post.id"
-          class="post-card"
+      <template v-else>
+        <div
+          v-if="isRefreshing"
+          class="refresh-banner"
+          role="status"
+          aria-live="polite"
         >
-          <div class="post-info">
-            <span class="status-badge">Onay Bekliyor</span>
+          Yazılar güncelleniyor...
+        </div>
 
-            <h2>{{ post.title }}</h2>
+        <div
+          v-if="!isRefreshing && posts.length === 0"
+          class="empty-state"
+        >
+          <h2>Onay bekleyen yazı bulunamadı</h2>
+          <p>Yeni bir yazı gönderildiğinde burada görüntülenecek.</p>
+        </div>
 
-            <span
-              v-if="post.category"
-              class="category-badge"
-            >
-              {{ post.category.name }}
-            </span>
+        <div
+          v-else
+          ref="postsListAnchor"
+          class="posts-list"
+          :class="{ 'posts-list--refreshing': isRefreshing }"
+        >
+          <article
+            v-for="post in posts"
+            :key="post.id"
+            class="post-card"
+          >
+            <div class="post-info">
+              <span class="status-badge">Onay Bekliyor</span>
 
-            <p class="post-content">
-              {{ post.content }}
-            </p>
+              <h2>{{ post.title }}</h2>
 
-            <div class="post-meta">
-              <span>Yazar: {{ getAuthorName(post) }}</span>
-              <span>{{ formatDate(post.created_at) }}</span>
+              <span
+                v-if="post.category"
+                class="category-badge"
+              >
+                {{ post.category.name }}
+              </span>
+
+              <p class="post-content">
+                {{ post.content }}
+              </p>
+
+              <div class="post-meta">
+                <span>Yazar: {{ getAuthorName(post) }}</span>
+                <span>{{ formatDate(post.created_at) }}</span>
+              </div>
             </div>
-          </div>
 
-          <div class="post-actions">
-            <button
-              type="button"
-              class="view-button"
-              @click="router.push(`/posts/${post.id}?from=admin`)"
-            >
-              Görüntüle
-            </button>
+            <div class="post-actions">
+              <button
+                type="button"
+                class="view-button"
+                @click="router.push(`/posts/${post.id}?from=admin`)"
+              >
+                Görüntüle
+              </button>
 
-            <button
-              type="button"
-              class="approve-button"
-              @click="approvePost(post.id)"
-            >
-              Onayla
-            </button>
+              <button
+                type="button"
+                class="approve-button"
+                @click="approvePost(post.id)"
+              >
+                Onayla
+              </button>
 
-            <button
-               type="button"
-               class="reject-button"
-               @click="openRejectModal(post.id)"
-            >
-              Reddet
-            </button>
-          </div>
-        </article>
+              <button
+                type="button"
+                class="reject-button"
+                @click="openRejectModal(post.id)"
+              >
+                Reddet
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <Pagination
+          :current-page="currentPage"
+          :last-page="lastPage"
+          :loading="isRefreshing"
+          @change-page="handlePageChange"
+        />
+      </template>
+    </div>
+  </div>
+
+  <div
+    v-if="isRejectModalOpen"
+    class="modal-overlay"
+  >
+    <div class="modal">
+      <h2>Yazıyı Reddet</h2>
+
+      <p>Lütfen red sebebini yazın.</p>
+
+      <textarea
+        v-model="rejectionReason"
+        rows="5"
+        placeholder="Red sebebini yazınız..."
+      ></textarea>
+
+      <div class="modal-actions">
+        <button
+          type="button"
+          class="cancel-button"
+          @click="isRejectModalOpen = false"
+        >
+          İptal
+        </button>
+
+        <button
+          type="button"
+          class="reject-button"
+          @click="rejectPost"
+        >
+          Reddet
+        </button>
       </div>
     </div>
   </div>
-  <div
-  v-if="isRejectModalOpen"
-  class="modal-overlay"
->
-  <div class="modal">
-    <h2>Yazıyı Reddet</h2>
-
-    <p>Lütfen red sebebini yazın.</p>
-
-    <textarea
-      v-model="rejectionReason"
-      rows="5"
-      placeholder="Red sebebini yazınız..."
-    ></textarea>
-
-    <div class="modal-actions">
-      <button
-        type="button"
-        class="cancel-button"
-        @click="isRejectModalOpen = false"
-      >
-        İptal
-      </button>
-
-      <button
-         type="button"
-         class="reject-button"
-         @click="rejectPost"
-      >
-        Reddet
-      </button>
-    </div>
-  </div>
-</div>
 </template>
 
 <style scoped>
@@ -355,6 +418,22 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  transition: opacity 0.15s ease;
+}
+
+.posts-list--refreshing {
+  opacity: 0.72;
+}
+
+.refresh-banner {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  color: #4338ca;
+  background-color: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .post-card {
@@ -446,6 +525,7 @@ onMounted(() => {
   color: #991b1b;
   border: 1px solid #fecaca;
 }
+
 .modal-overlay {
   position: fixed;
   inset: 0;

@@ -1,75 +1,135 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPosts, likePost, unlikePost } from '../services/postService'
+import { getCategories } from '../services/categoryService'
 import { useAuthStore } from '../stores/auth'
 import PostInteractionBar from '../components/PostInteractionBar.vue'
+import Pagination from '../components/Pagination.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const posts = ref([])
+const categories = ref([])
 const searchQuery = ref('')
+const debouncedSearch = ref('')
 const selectedCategory = ref('')
-const isLoading = ref(true)
+const currentPage = ref(1)
+const lastPage = ref(1)
+const perPage = ref(9)
+const total = ref(0)
+const isInitialLoading = ref(true)
+const isRefreshing = ref(false)
 const errorMessage = ref('')
 const likeActionError = ref('')
 const likingPostIds = ref(new Set())
+const postsListAnchor = ref(null)
 
+let searchDebounceTimer = null
 
+const hasActiveFilters = computed(
+  () => debouncedSearch.value !== '' || selectedCategory.value !== '',
+)
 
-const loadPosts = async () => {
-  isLoading.value = true
-  errorMessage.value = ''
+const parsePostsResponse = (response) => {
+  const raw = response.data?.posts
+
+  if (Array.isArray(raw)) {
+    return raw
+  }
+
+  if (Array.isArray(raw?.data)) {
+    return raw.data
+  }
+
+  if (Array.isArray(response.data?.data)) {
+    return response.data.data
+  }
+
+  return []
+}
+
+const parseCategoriesResponse = (response) => {
+  const raw = response.data?.categories
+
+  if (Array.isArray(raw)) {
+    return raw
+  }
+
+  if (Array.isArray(raw?.data)) {
+    return raw.data
+  }
+
+  return []
+}
+
+const loadCategories = async () => {
+  try {
+    const response = await getCategories()
+    categories.value = parseCategoriesResponse(response)
+  } catch {
+    categories.value = []
+  }
+}
+
+const loadPosts = async ({ scrollToList = false } = {}) => {
+  if (isInitialLoading.value) {
+    errorMessage.value = ''
+  } else {
+    isRefreshing.value = true
+  }
 
   try {
-    const response = await getPosts()
+    const params = {
+      page: currentPage.value,
+      per_page: perPage.value,
+    }
 
-    posts.value =
-      response.data.posts ??
-      response.data.data ??
-      response.data ??
-      []
+    if (debouncedSearch.value) {
+      params.search = debouncedSearch.value
+    }
+
+    if (selectedCategory.value) {
+      params.category = selectedCategory.value
+    }
+
+    const response = await getPosts(params)
+
+    posts.value = parsePostsResponse(response)
+
+    const meta = response.data?.meta ?? {}
+
+    currentPage.value = meta.current_page ?? currentPage.value
+    lastPage.value = meta.last_page ?? 1
+    perPage.value = meta.per_page ?? perPage.value
+    total.value = meta.total ?? 0
+    errorMessage.value = ''
+
+    if (scrollToList) {
+      postsListAnchor.value?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }
   } catch (error) {
-    console.error('Yazılar alınamadı:', error)
-
     errorMessage.value =
       error.response?.data?.message ||
       'Blog yazıları yüklenirken bir hata oluştu.'
   } finally {
-    isLoading.value = false
+    isInitialLoading.value = false
+    isRefreshing.value = false
   }
 }
 
-const categories = computed(() => {
-  const categoryMap = new Map()
+const handlePageChange = (page) => {
+  if (page === currentPage.value || isRefreshing.value) {
+    return
+  }
 
-  posts.value.forEach((post) => {
-    if (post.category?.id && post.category?.name) {
-      categoryMap.set(post.category.id, post.category)
-    }
-  })
-
-  return Array.from(categoryMap.values())
-})
-
-const filteredPosts = computed(() => {
-  const searchText = searchQuery.value.trim().toLocaleLowerCase('tr-TR')
-
-  return posts.value.filter((post) => {
-    const isPublished = post.status === 'published'
-
-    const matchesSearch =
-       post.title?.toLocaleLowerCase('tr-TR').includes(searchText) ||
-       post.content?.toLocaleLowerCase('tr-TR').includes(searchText)
-
-    const matchesCategory =
-       selectedCategory.value === '' ||
-       String(post.category?.id) === String(selectedCategory.value)
-
-    return isPublished && matchesSearch && matchesCategory
-  })
-})
+  currentPage.value = page
+  loadPosts({ scrollToList: true })
+}
 
 const getStatusLabel = (status) => {
   if (status === 'published') {
@@ -194,6 +254,33 @@ onMounted(async () => {
     }
   }
 
+  await loadCategories()
+  await loadPosts()
+})
+
+watch(searchQuery, () => {
+  clearTimeout(searchDebounceTimer)
+
+  searchDebounceTimer = setTimeout(() => {
+    debouncedSearch.value = searchQuery.value.trim()
+  }, 400)
+})
+
+watch(debouncedSearch, () => {
+  if (isInitialLoading.value) {
+    return
+  }
+
+  currentPage.value = 1
+  loadPosts()
+})
+
+watch(selectedCategory, () => {
+  if (isInitialLoading.value) {
+    return
+  }
+
+  currentPage.value = 1
   loadPosts()
 })
 </script>
@@ -220,10 +307,10 @@ onMounted(async () => {
           <button
             type="button"
             class="refresh-button"
-            :disabled="isLoading"
-            @click="loadPosts"
+            :disabled="isInitialLoading || isRefreshing"
+            @click="loadPosts()"
           >
-            {{ isLoading ? 'Yenileniyor...' : 'Yenile' }}
+            {{ isInitialLoading || isRefreshing ? 'Yenileniyor...' : 'Yenile' }}
           </button>
         </div>
 
@@ -249,7 +336,7 @@ onMounted(async () => {
       <option
         v-for="category in categories"
         :key="category.id"
-        :value="category.id"
+        :value="category.slug"
       >
         {{ category.name }}
       </option>
@@ -276,46 +363,56 @@ onMounted(async () => {
         </div>
 
         <div
-          v-if="isLoading"
+          v-if="isInitialLoading"
           class="loading-state"
         >
           <div class="loading-spinner"></div>
           <p>Blog yazıları yükleniyor...</p>
         </div>
 
-        <div
-        
-          v-else-if="filteredPosts.length === 0"
-          class="empty-state"
-       >
-         <div class="empty-icon">🗒️</div>
-         <h3>
-          {{
-          searchQuery.trim()
-          ? 'Aramanızla eşleşen blog yazısı bulunamadı.'
-          : 'Henüz yayınlanmış blog yazısı bulunmuyor.'
-          }}
-
-        </h3>
-
-        <p>
-          {{
-          searchQuery.trim()
-          ? 'Farklı bir başlık veya içerik kelimesiyle tekrar arama yapabilirsiniz.'
-          : 'Yayınlanmış bir blog yazısı olduğunda burada görüntülenecektir.'
-          }}
-        </p>
-     </div>
-
-        <div
-          v-else
-          class="posts-list"
-        >
-          <article
-            v-for="post in filteredPosts"
-            :key="post.id"
-            class="post-card"
+        <template v-else>
+          <div
+            v-if="isRefreshing"
+            class="refresh-banner"
+            role="status"
+            aria-live="polite"
           >
+            Yazılar güncelleniyor...
+          </div>
+
+          <div
+            v-if="!isRefreshing && posts.length === 0"
+            class="empty-state"
+          >
+            <div class="empty-icon">🗒️</div>
+            <h3>
+              {{
+                hasActiveFilters
+                  ? 'Aramanızla eşleşen blog yazısı bulunamadı.'
+                  : 'Henüz yayınlanmış blog yazısı bulunmuyor.'
+              }}
+            </h3>
+
+            <p>
+              {{
+                hasActiveFilters
+                  ? 'Farklı bir başlık, içerik veya kategori ile tekrar deneyebilirsiniz.'
+                  : 'Yayınlanmış bir blog yazısı olduğunda burada görüntülenecektir.'
+              }}
+            </p>
+          </div>
+
+          <div
+            v-else
+            ref="postsListAnchor"
+            class="posts-list"
+            :class="{ 'posts-list--refreshing': isRefreshing }"
+          >
+            <article
+              v-for="post in posts"
+              :key="post.id"
+              class="post-card"
+            >
             <div class="post-main">
               <div class="post-top">
                 <span
@@ -384,7 +481,15 @@ onMounted(async () => {
 
             </div>
           </article>
-        </div>
+          </div>
+
+          <Pagination
+            :current-page="currentPage"
+            :last-page="lastPage"
+            :loading="isRefreshing"
+            @change-page="handlePageChange"
+          />
+        </template>
       </section>
     </div>
   </div>
@@ -602,6 +707,22 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  transition: opacity 0.15s ease;
+}
+
+.posts-list--refreshing {
+  opacity: 0.72;
+}
+
+.refresh-banner {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  color: #4338ca;
+  background-color: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .post-card {

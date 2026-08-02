@@ -1,16 +1,30 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMyPosts } from '../services/postService'
 import api from '../services/api'
 import PostInteractionBar from '../components/PostInteractionBar.vue'
+import Pagination from '../components/Pagination.vue'
 
 const router = useRouter()
 
 const posts = ref([])
 const activeFilter = ref('all')
-const isLoading = ref(true)
+const currentPage = ref(1)
+const lastPage = ref(1)
+const perPage = ref(9)
+const total = ref(0)
+const summary = ref({
+  all: 0,
+  draft: 0,
+  pending: 0,
+  published: 0,
+  rejected: 0,
+})
+const isInitialLoading = ref(true)
+const isRefreshing = ref(false)
 const errorMessage = ref('')
+const postsListAnchor = ref(null)
 
 const postToDelete = ref(null)
 const isDeleteModalOpen = ref(false)
@@ -18,8 +32,32 @@ const isDeleting = ref(false)
 
 const currentUserRole = ref('')
 
-const isAdmin = computed(() => {
-  return currentUserRole.value === 'admin'
+const isAdmin = computed(() => currentUserRole.value === 'admin')
+
+const parsePostsResponse = (response) => {
+  const raw = response.data?.posts
+
+  if (Array.isArray(raw)) {
+    return raw
+  }
+
+  if (Array.isArray(raw?.data)) {
+    return raw.data
+  }
+
+  if (Array.isArray(response.data?.data)) {
+    return response.data.data
+  }
+
+  return []
+}
+
+const parseSummaryResponse = (response) => ({
+  all: response.data?.summary?.all ?? 0,
+  draft: response.data?.summary?.draft ?? 0,
+  pending: response.data?.summary?.pending ?? 0,
+  published: response.data?.summary?.published ?? 0,
+  rejected: response.data?.summary?.rejected ?? 0,
 })
 
 const loadCurrentUser = async () => {
@@ -28,70 +66,72 @@ const loadCurrentUser = async () => {
     const user = response.data.data ?? response.data
 
     currentUserRole.value = user.role ?? ''
-  } catch (error) {
-    console.error('Kullanıcı rolü alınamadı:', error)
+  } catch {
     currentUserRole.value = ''
   }
 }
 
-const loadPosts = async () => {
-  isLoading.value = true
-  errorMessage.value = ''
+const loadPosts = async ({ scrollToList = false } = {}) => {
+  if (isInitialLoading.value) {
+    errorMessage.value = ''
+  } else {
+    isRefreshing.value = true
+  }
 
   try {
-    const response = await getMyPosts()
+    const params = {
+      page: currentPage.value,
+      per_page: perPage.value,
+    }
 
-    posts.value =
-      response.data.posts ??
-      response.data.data ??
-      response.data ??
-      []
+    if (activeFilter.value !== 'all') {
+      params.status = activeFilter.value
+    }
+
+    const response = await getMyPosts(params)
+
+    posts.value = parsePostsResponse(response)
+    summary.value = parseSummaryResponse(response)
+
+    const meta = response.data?.meta ?? {}
+
+    currentPage.value = meta.current_page ?? currentPage.value
+    lastPage.value = meta.last_page ?? 1
+    perPage.value = meta.per_page ?? perPage.value
+    total.value = meta.total ?? 0
+    errorMessage.value = ''
+
+    if (scrollToList) {
+      postsListAnchor.value?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }
   } catch (error) {
-    console.error('Yazılar alınamadı:', error)
-
     errorMessage.value =
       error.response?.data?.message ||
       'Blog yazıları yüklenirken bir hata oluştu.'
   } finally {
-    isLoading.value = false
+    isInitialLoading.value = false
+    isRefreshing.value = false
   }
 }
 
-const filteredPosts = computed(() => {
-  if (activeFilter.value === 'all') {
-    return posts.value
+const setFilter = (filter) => {
+  if (activeFilter.value === filter || isRefreshing.value) {
+    return
   }
 
-  return posts.value.filter(
-    (post) => post.status === activeFilter.value,
-  )
-})
-
-const publishedPostCount = computed(() => {
-  return posts.value.filter(
-    (post) => post.status === 'published',
-  ).length
-})
-
-const pendingPostCount = computed(() => {
-  return posts.value.filter(
-    (post) => post.status === 'pending',
-  ).length
-})
-
-const draftPostCount = computed(() => {
-  return posts.value.filter(
-    (post) => post.status === 'draft',
-  ).length
-})
-const rejectedPostCount = computed(() => {
-  return posts.value.filter(
-    (post) => post.status === 'rejected',
-  ).length
-})
-
-const setFilter = (filter) => {
   activeFilter.value = filter
+}
+
+const handlePageChange = (page) => {
+  if (page === currentPage.value || isRefreshing.value) {
+    return
+  }
+
+  currentPage.value = page
+  loadPosts({ scrollToList: true })
 }
 
 const goToCreatePost = () => {
@@ -101,10 +141,12 @@ const goToCreatePost = () => {
 const goToEditPost = (postId) => {
   router.push(`/posts/${postId}/edit`)
 }
+
 const openDeleteModal = (post) => {
   postToDelete.value = post
   isDeleteModalOpen.value = true
 }
+
 const closeDeleteModal = () => {
   if (isDeleting.value) {
     return
@@ -125,15 +167,17 @@ const confirmDeletePost = async () => {
   try {
     await api.delete(`/posts/${postToDelete.value.id}`)
 
-    posts.value = posts.value.filter(
-      (post) => post.id !== postToDelete.value.id,
-    )
+    const wasLastItemOnPage = posts.value.length === 1
 
     isDeleteModalOpen.value = false
     postToDelete.value = null
-  } catch (error) {
-    console.error('Yazı silinemedi:', error)
 
+    if (wasLastItemOnPage && currentPage.value > 1) {
+      currentPage.value -= 1
+    }
+
+    await loadPosts()
+  } catch (error) {
     errorMessage.value =
       error.response?.data?.message ||
       'Yazı silinirken bir hata oluştu.'
@@ -177,6 +221,15 @@ onMounted(async () => {
   await loadCurrentUser()
   await loadPosts()
 })
+
+watch(activeFilter, () => {
+  if (isInitialLoading.value) {
+    return
+  }
+
+  currentPage.value = 1
+  loadPosts()
+})
 </script>
 
 <template>
@@ -208,7 +261,7 @@ onMounted(async () => {
           <div>
             <span class="statistic-label">Tüm Yazılar</span>
             <strong class="statistic-value">
-              {{ posts.length }}
+              {{ summary.all }}
             </strong>
           </div>
         </div>
@@ -219,7 +272,7 @@ onMounted(async () => {
           <div>
             <span class="statistic-label">Yayınlananlar</span>
             <strong class="statistic-value">
-              {{ publishedPostCount }}
+              {{ summary.published }}
             </strong>
           </div>
         </div>
@@ -233,7 +286,7 @@ onMounted(async () => {
           <div>
             <span class="statistic-label">Onay Bekleyenler</span>
             <strong class="statistic-value">
-              {{ pendingPostCount }}
+              {{ summary.pending }}
             </strong>
           </div>
           
@@ -243,8 +296,7 @@ onMounted(async () => {
             <div>
               <span class="statistic-label">Reddedilenler</span>
               <strong class="statistic-value">
-                
-                {{ rejectedPostCount }}
+                {{ summary.rejected }}
               </strong>
               </div>
             </div>
@@ -264,10 +316,10 @@ onMounted(async () => {
           <button
             type="button"
             class="refresh-button"
-            :disabled="isLoading"
-            @click="loadPosts"
+            :disabled="isInitialLoading || isRefreshing"
+            @click="loadPosts()"
           >
-            {{ isLoading ? 'Yenileniyor...' : 'Yenile' }}
+            {{ isInitialLoading || isRefreshing ? 'Yenileniyor...' : 'Yenile' }}
           </button>
         </div>
 
@@ -279,7 +331,7 @@ onMounted(async () => {
             @click="setFilter('all')"
           >
             Tümü
-            <span>{{ posts.length }}</span>
+            <span>{{ summary.all }}</span>
           </button>
 
           <button
@@ -289,7 +341,7 @@ onMounted(async () => {
             @click="setFilter('published')"
           >
             Yayınlananlar
-            <span>{{ publishedPostCount }}</span>
+            <span>{{ summary.published }}</span>
           </button>
          
           <button
@@ -300,7 +352,7 @@ onMounted(async () => {
          >
             Taslaklar
             
-            <span>{{ draftPostCount }}</span>
+            <span>{{ summary.draft }}</span>
         </button>
 
           <button
@@ -312,7 +364,7 @@ onMounted(async () => {
           
             Onay Bekleyenler
           
-            <span>{{ pendingPostCount }}</span>
+            <span>{{ summary.pending }}</span>
         </button>
         
         <button
@@ -322,7 +374,7 @@ onMounted(async () => {
               @click="setFilter('rejected')"
         >
              Reddedilenler
-             <span>{{ rejectedPostCount }}</span>
+             <span>{{ summary.rejected }}</span>
         </button>
         </div>
 
@@ -336,52 +388,68 @@ onMounted(async () => {
         </div>
 
         <div
-          v-if="isLoading"
+          v-if="isInitialLoading"
           class="loading-state"
         >
           <div class="loading-spinner"></div>
           <p>Blog yazıları yükleniyor...</p>
         </div>
 
-        <div
-          v-else-if="filteredPosts.length === 0"
-          class="empty-state"
-        >
-          <div class="empty-icon">🗒️</div>
-
-          <h3>
-            {{
-              activeFilter === 'pending'
-                ? 'Onay bekleyen yazı bulunamadı'
-                : activeFilter === 'published'
-                  ? 'Yayınlanmış yazı bulunamadı'
-                  : 'Henüz blog yazısı bulunmuyor'
-            }}
-          </h3>
-
-          <p>
-            Yeni bir blog yazısı oluşturarak içeriklerinizi paylaşmaya
-            başlayabilirsiniz.
-          </p>
-
-          <button
-            type="button"
-            class="empty-create-button"
-            @click="goToCreatePost"
+        <template v-else>
+          <div
+            v-if="isRefreshing"
+            class="refresh-banner"
+            role="status"
+            aria-live="polite"
           >
-            Yeni Yazı Oluştur
-          </button>
-        </div>
+            Yazılar güncelleniyor...
+          </div>
 
-        <div
-          v-else
-          class="posts-list"
-        >
-          <article
-            v-for="post in filteredPosts"
-            :key="post.id"
-            class="post-card"
+          <div
+            v-if="!isRefreshing && posts.length === 0"
+            class="empty-state"
           >
+            <div class="empty-icon">🗒️</div>
+
+            <h3>
+              {{
+                activeFilter === 'pending'
+                  ? 'Onay bekleyen yazı bulunamadı'
+                  : activeFilter === 'published'
+                    ? 'Yayınlanmış yazı bulunamadı'
+                    : activeFilter === 'draft'
+                      ? 'Taslak yazı bulunamadı'
+                      : activeFilter === 'rejected'
+                        ? 'Reddedilen yazı bulunamadı'
+                        : 'Henüz blog yazısı bulunmuyor'
+              }}
+            </h3>
+
+            <p>
+              Yeni bir blog yazısı oluşturarak içeriklerinizi paylaşmaya
+              başlayabilirsiniz.
+            </p>
+
+            <button
+              type="button"
+              class="empty-create-button"
+              @click="goToCreatePost"
+            >
+              Yeni Yazı Oluştur
+            </button>
+          </div>
+
+          <div
+            v-else
+            ref="postsListAnchor"
+            class="posts-list"
+            :class="{ 'posts-list--refreshing': isRefreshing }"
+          >
+            <article
+              v-for="post in posts"
+              :key="post.id"
+              class="post-card"
+            >
             <div class="post-main">
               <div class="post-top">
                 <span
@@ -465,7 +533,15 @@ onMounted(async () => {
               </button>
             </div>
           </article>
-        </div>
+          </div>
+
+          <Pagination
+            :current-page="currentPage"
+            :last-page="lastPage"
+            :loading="isRefreshing"
+            @change-page="handlePageChange"
+          />
+        </template>
       </section>
     </div>
   </div>
@@ -822,6 +898,22 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  transition: opacity 0.15s ease;
+}
+
+.posts-list--refreshing {
+  opacity: 0.72;
+}
+
+.refresh-banner {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  color: #4338ca;
+  background-color: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .post-card {
