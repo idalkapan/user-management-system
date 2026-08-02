@@ -56,6 +56,11 @@ class PostComment extends Model
         return $this->hasMany(PostCommentLike::class);
     }
 
+    public function reports(): HasMany
+    {
+        return $this->hasMany(PostCommentReport::class, 'post_comment_id');
+    }
+
     public function scopeRoots(Builder $query): Builder
     {
         return $query->whereNull('parent_id');

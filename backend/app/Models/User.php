@@ -60,5 +60,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(PostCommentLike::class);
     }
+
+    public function submittedCommentReports(): HasMany
+    {
+        return $this->hasMany(PostCommentReport::class, 'reported_by');
+    }
+
+    public function reviewedCommentReports(): HasMany
+    {
+        return $this->hasMany(PostCommentReport::class, 'reviewed_by');
+    }
 }
 

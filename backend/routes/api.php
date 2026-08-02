@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\PostInteractionController;
 use App\Http\Controllers\Api\PostCommentController;
 use App\Http\Controllers\Api\PostCommentLikeController;
+use App\Http\Controllers\Api\PostCommentReportController;
 use App\Http\Controllers\Api\PostLikeController;
 use App\Http\Controllers\Api\CategoryController as PublicCategoryController;
 
@@ -191,6 +192,11 @@ Route::middleware('auth:sanctum')->post(
 Route::middleware('auth:sanctum')->delete(
     '/comments/{comment}/like',
     [PostCommentLikeController::class, 'destroy']
+);
+
+Route::middleware('auth:sanctum')->post(
+    '/comments/{comment}/report',
+    [PostCommentReportController::class, 'store']
 );
 
 Route::middleware('auth:sanctum')->put(
