@@ -23,8 +23,11 @@ class PostResource extends JsonResource
                ? asset('storage/' . $this->featured_image)
                : null,
             'status' => $this->status,
-            'rejection_reason' => $this->rejection_reason,
-            
+            'rejection_reason' => $this->when(
+                $this->canViewRejectionReason($request),
+                $this->rejection_reason,
+            ),
+
             'author' => [
                 'id' => $this->user->id,
                 'name' => $this->user->name,
@@ -58,5 +61,20 @@ class PostResource extends JsonResource
         }
 
         return (bool) ($this->is_liked_by_current_user ?? false);
+    }
+
+    private function canViewRejectionReason(Request $request): bool
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return false;
+        }
+
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        return $user->id === $this->user_id;
     }
 }

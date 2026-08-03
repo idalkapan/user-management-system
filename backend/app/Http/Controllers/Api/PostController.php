@@ -136,6 +136,12 @@ class PostController extends Controller
 
         $post = $query->findOrFail($id);
 
+        if ($user->cannot('view', $post)) {
+            return response()->json([
+                'message' => 'Bu yazıyı görüntüleme yetkiniz bulunmamaktadır.',
+            ], 403);
+        }
+
         return response()->json([
             'message' => 'Yazı başarıyla getirildi.',
             'post' => new PostResource($post),

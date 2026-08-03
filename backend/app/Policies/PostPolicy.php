@@ -20,7 +20,15 @@ class PostPolicy
      */
     public function view(User $user, Post $post): bool
     {
-        return true;
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        if ($user->id === $post->user_id) {
+            return true;
+        }
+
+        return $post->status === 'published';
     }
 
     /**
