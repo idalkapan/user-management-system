@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Admin\CategoryController;
+use App\Http\Controllers\Api\Admin\CommentReportController;
 use App\Http\Controllers\Api\Admin\StatisticsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\ProfileController;
@@ -111,6 +112,21 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
         ->withTrashed()
         ->name('admin.categories.restore');
     Route::delete('/admin/categories/{category}', [CategoryController::class, 'destroy']);
+
+    Route::get(
+        '/admin/comment-reports',
+        [CommentReportController::class, 'index']
+    );
+
+    Route::get(
+        '/admin/comment-reports/{report}',
+        [CommentReportController::class, 'show']
+    );
+
+    Route::patch(
+        '/admin/comment-reports/{report}/resolve',
+        [CommentReportController::class, 'resolve']
+    );
 });
 
 /*

@@ -17,6 +17,7 @@ import AdminCategoriesView from '../views/AdminCategoriesView.vue'
 import AdminDashboardView from '../views/AdminDashboardView.vue'
 import StatisticsView from '../views/StatisticsView.vue'
 import AdminStatisticsView from '../views/AdminStatisticsView.vue'
+import AdminCommentReportsView from '../views/AdminCommentReportsView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -84,6 +85,15 @@ const router = createRouter({
           path: 'admin/posts',
           name: 'admin-posts',
           component: AdminPostsView,
+          meta: {
+            requiresAuth: true,
+            requiresAdmin: true,
+          },
+        },
+        {
+          path: 'admin/comment-reports',
+          name: 'admin-comment-reports',
+          component: AdminCommentReportsView,
           meta: {
             requiresAuth: true,
             requiresAdmin: true,

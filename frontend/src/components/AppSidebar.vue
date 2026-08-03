@@ -28,6 +28,13 @@
         </RouterLink>
 
         <RouterLink
+          to="/admin/comment-reports"
+          class="sidebar-link"
+        >
+          Yorum Şikâyetleri
+        </RouterLink>
+
+        <RouterLink
           to="/admin/categories"
           class="sidebar-link"
         >

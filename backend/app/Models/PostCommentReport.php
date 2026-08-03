@@ -60,4 +60,39 @@ class PostCommentReport extends Model
     {
         return $this->belongsTo(User::class, 'reviewed_by');
     }
+
+    public static function reasonLabel(?string $reason): string
+    {
+        return match ($reason) {
+            'spam' => 'Spam / Reklam',
+            'harassment' => 'Taciz veya Zorbalık',
+            'hate_speech' => 'Nefret Söylemi',
+            'inappropriate' => 'Uygunsuz İçerik',
+            'misinformation' => 'Yanıltıcı Bilgi',
+            'other' => 'Diğer',
+            default => 'Belirtilmemiş',
+        };
+    }
+
+    public static function statusLabel(?string $status): string
+    {
+        return match ($status) {
+            self::STATUS_PENDING => 'Bekliyor',
+            self::STATUS_RESOLVED_REMOVED => 'Yorum Kaldırıldı',
+            self::STATUS_RESOLVED_KEPT => 'Yorum Bırakıldı',
+            default => 'Belirtilmemiş',
+        };
+    }
+
+    public static function snapshotGroupKey(
+        ?string $content,
+        ?int $authorId,
+        ?int $postId,
+    ): string {
+        return implode('|', [
+            (string) $content,
+            (string) ($authorId ?? ''),
+            (string) ($postId ?? ''),
+        ]);
+    }
 }
