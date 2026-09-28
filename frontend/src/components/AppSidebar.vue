@@ -111,8 +111,10 @@ onMounted(async () => {
   if (authStore.isAuthenticated && !authStore.user) {
     try {
       await authStore.fetchUser()
-    } catch {
-      // Sidebar menüsü guard akışına bırakılır.
+    } catch (error) {
+      if (error.response?.status === 401) {
+        authStore.clearLocalSession()
+      }
     }
   }
 })

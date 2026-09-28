@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
+use DateTimeInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Resources\UserResource;
@@ -45,16 +46,35 @@ class AuthController extends Controller
                 ], 401);
             }
             
-            $token = $user->createToken('auth_token')->plainTextToken;
+            $expiresAt = $this->resolveTokenExpiresAt(
+                $user,
+                $request->boolean('remember_me'),
+            );
+            $accessToken = $user->createToken('auth_token', ['*'], $expiresAt);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Giriş başarılı.',
                 'data' => [
                     'user' => new UserResource($user),
-                    'token' => $token,
+                    'token' => $accessToken->plainTextToken,
+                    'expires_at' => $accessToken->accessToken->expires_at,
                     ],
                     ]);
 
+    }
+
+    private function resolveTokenExpiresAt(User $user, bool $rememberMe): DateTimeInterface
+    {
+        if ($user->role === 'admin') {
+            return now()->addDay();
+        }
+
+        if ($user->role === 'user') {
+            return $rememberMe ? now()->addDays(30) : now()->addDays(7);
+        }
+
+        return now()->addDay();
     }
     public function logout(Request $request)
     {

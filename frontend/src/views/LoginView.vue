@@ -19,6 +19,11 @@
           <input id="password" v-model="password" type="password" placeholder="••••••••" />
         </div>
 
+        <label class="remember-me">
+          <input v-model="rememberMe" type="checkbox" />
+          <span>Beni hatırla</span>
+        </label>
+
         <button
           type="submit"
           class="login-button"
@@ -46,8 +51,14 @@ import { useAuthStore } from '../stores/auth'
 
 const email = ref('')
 const password = ref('')
+const rememberMe = ref(false)
 const errorMessage = ref('')
 const isLoading = ref(false)
+
+if (sessionStorage.getItem('sessionExpired') === '1') {
+  errorMessage.value = 'Oturumunuz sona erdi. Lütfen tekrar giriş yapın.'
+  sessionStorage.removeItem('sessionExpired')
+}
 const retryAfterSeconds = ref(0)
 
 const isRateLimited = computed(() => retryAfterSeconds.value > 0)
@@ -98,6 +109,7 @@ const login = async () => {
     await authStore.login({
       email: email.value,
       password: password.value,
+      remember_me: rememberMe.value,
     })
 
     router.push(authStore.getHomeRoute())
@@ -198,6 +210,18 @@ onUnmounted(() => {
   border-color: #4f6ef7;
   box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.15);
   background-color: #ffffff;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #4a5568;
+}
+
+.remember-me input {
+  margin: 0;
 }
 
 .login-button {

@@ -137,17 +137,28 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
+  if (authStore.isAuthenticated && !authStore.sessionValidated) {
+    try {
+      await authStore.fetchUser()
+      authStore.sessionValidated = true
+    } catch (error) {
+      if (error.response?.status === 401) {
+        authStore.clearLocalSession()
+
+        if (to.path !== '/login') {
+          return '/login'
+        }
+      }
+    }
+  }
+
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return '/login'
   }
 
   if (to.meta.requiresAdmin) {
-    if (!authStore.user) {
-      try {
-        await authStore.fetchUser()
-      } catch {
-        return '/login'
-      }
+    if (!authStore.isAuthenticated) {
+      return '/login'
     }
 
     if (!authStore.isAdmin) {
@@ -156,14 +167,6 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.guestOnly && authStore.isAuthenticated) {
-    if (!authStore.user) {
-      try {
-        await authStore.fetchUser()
-      } catch {
-        return '/login'
-      }
-    }
-
     return authStore.getHomeRoute()
   }
 

@@ -5,9 +5,17 @@ import authService from '../services/authService'
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token'))
   const user = ref(null)
+  const sessionValidated = ref(false)
 
   const isAuthenticated = computed(() => Boolean(token.value))
   const isAdmin = computed(() => user.value?.role === 'admin')
+
+  const clearLocalSession = () => {
+    token.value = null
+    user.value = null
+    sessionValidated.value = false
+    localStorage.removeItem('token')
+  }
 
   const login = async (credentials) => {
     const response = await authService.login(credentials)
@@ -15,6 +23,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = response.data.data.token
     localStorage.setItem('token', token.value)
     await fetchUser()
+    sessionValidated.value = true
   
     return response
   }
@@ -30,9 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await authService.logout()
     } finally {
-      token.value = null
-      user.value = null
-      localStorage.removeItem('token')
+      clearLocalSession()
     }
   }
 
@@ -49,9 +56,11 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isAuthenticated,
     isAdmin,
+    sessionValidated,
     login,
     fetchUser,
     logout,
+    clearLocalSession,
     getHomeRoute,
   }
 })

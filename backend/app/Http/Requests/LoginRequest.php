@@ -24,7 +24,8 @@ class LoginRequest extends FormRequest
         return [
             'email' => 'required|email',
             'password' => 'required|string',
-            ];
+            'remember_me' => ['sometimes', 'boolean'],
+        ];
     }
     public function messages(): array
     {
@@ -34,6 +35,8 @@ class LoginRequest extends FormRequest
 
             'password.required' => 'Şifre alanı zorunludur.',
             'password.string' => 'Şifre geçerli bir metin olmalıdır.',
+
+            'remember_me.boolean' => 'Beni hatırla alanı geçerli bir değer olmalıdır.',
         ];
     }
 }
