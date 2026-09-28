@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\UpdateProfileRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Resources\UserResource;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\UploadProfilePhotoRequest;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class ProfileController extends Controller
 {
@@ -36,13 +38,30 @@ class ProfileController extends Controller
     public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
         $user = $request->user();
-        
-        $user->password = Hash::make($request->password);
-        $user->save();
-         return response()->json([
+
+        DB::transaction(function () use ($user, $request): void {
+            $user->password = Hash::make($request->password);
+            $user->save();
+
+            $currentToken = $user->currentAccessToken();
+
+            if (! $currentToken instanceof PersonalAccessToken) {
+                return;
+            }
+
+            $currentTokenId = $currentToken->getKey();
+
+            if ($currentTokenId === null) {
+                return;
+            }
+
+            $user->tokens()->whereKeyNot($currentTokenId)->delete();
+        });
+
+        return response()->json([
             'success' => true,
             'message' => 'Şifre başarıyla değiştirildi.',
-            ], 200);
+        ], 200);
     }
     public function uploadPhoto(UploadProfilePhotoRequest $request): JsonResponse
     {

@@ -50,14 +50,15 @@
         <div class="form-group">
           <label for="password">Şifre</label>
 
-          <input
+          <PasswordField
             id="password"
             v-model="password"
-            type="password"
-            placeholder="En az 8 karakter"
             autocomplete="new-password"
-            :class="{ 'input-error': fieldErrors.password }"
+            placeholder="En az 8 karakter"
+            :invalid="Boolean(fieldErrors.password)"
           />
+
+          <PasswordStrength :password="password" />
 
           <p v-if="fieldErrors.password" class="field-error">
             {{ fieldErrors.password[0] }}
@@ -67,13 +68,12 @@
         <div class="form-group">
           <label for="password_confirmation">Şifre Tekrarı</label>
 
-          <input
+          <PasswordField
             id="password_confirmation"
             v-model="passwordConfirmation"
-            type="password"
-            placeholder="Şifrenizi tekrar girin"
             autocomplete="new-password"
-            :class="{ 'input-error': fieldErrors.password_confirmation }"
+            placeholder="Şifrenizi tekrar girin"
+            :invalid="Boolean(fieldErrors.password_confirmation)"
           />
 
           <p
@@ -104,6 +104,8 @@
 <script setup>
 import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import PasswordField from '../components/PasswordField.vue'
+import PasswordStrength from '../components/PasswordStrength.vue'
 import api from '../services/api'
 
 const name = ref('')

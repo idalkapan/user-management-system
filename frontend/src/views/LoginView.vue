@@ -16,7 +16,12 @@
 
         <div class="form-group">
           <label for="password">Şifre</label>
-          <input id="password" v-model="password" type="password" placeholder="••••••••" />
+          <PasswordField
+            id="password"
+            v-model="password"
+            autocomplete="current-password"
+            placeholder="••••••••"
+          />
         </div>
 
         <label class="remember-me">
@@ -47,6 +52,7 @@
 <script setup>
 import { computed, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import PasswordField from '../components/PasswordField.vue'
 import { useAuthStore } from '../stores/auth'
 
 const email = ref('')

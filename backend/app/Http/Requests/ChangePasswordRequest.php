@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests;
 
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class ChangePasswordRequest extends FormRequest
 {
@@ -24,21 +27,43 @@ class ChangePasswordRequest extends FormRequest
     {
         return [
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', 'min:8'],
-            ];
+            'password' => [
+                'required',
+                'confirmed',
+                'bail',
+                $this->differentFromCurrentPassword(),
+                Password::defaults(),
+            ],
+        ];
     }
-     /**
+
+    /**
      * Get the custom validation messages.
      */
-     public function messages(): array
-     {
-         return [
-             'current_password.required' => 'Mevcut şifre alanı zorunludur.',
-             'current_password.current_password' => 'Mevcut şifre hatalı.',
- 
-             'password.required' => 'Yeni şifre alanı zorunludur.',
-             'password.min' => 'Yeni şifre en az 8 karakter olmalıdır.',
-             'password.confirmed' => 'Yeni şifreler eşleşmiyor.',
-         ];
-     }
+    public function messages(): array
+    {
+        return [
+            'current_password.required' => 'Mevcut şifre alanı zorunludur.',
+            'current_password.current_password' => 'Mevcut şifre hatalı.',
+
+            'password.required' => 'Yeni şifre alanı zorunludur.',
+            'password.min' => 'Yeni şifre en az 8 karakter olmalıdır.',
+            'password.confirmed' => 'Yeni şifreler eşleşmiyor.',
+        ];
+    }
+
+    private function differentFromCurrentPassword(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $user = $this->user();
+
+            if (! is_string($value) || $user === null) {
+                return;
+            }
+
+            if (Hash::check($value, (string) $user->password)) {
+                $fail('Yeni şifreniz mevcut şifrenizle aynı olamaz.');
+            }
+        };
+    }
 }

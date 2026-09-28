@@ -207,15 +207,12 @@
             <div class="form-group">
               <label for="current-password">Mevcut Şifre</label>
 
-              <input
+              <PasswordField
                 id="current-password"
                 v-model="passwordForm.current_password"
-                type="password"
                 autocomplete="current-password"
                 placeholder="Mevcut şifrenizi girin"
-                :class="{
-                  'input-error': passwordErrors.current_password,
-                }"
+                :invalid="Boolean(passwordErrors.current_password)"
               />
 
               <p
@@ -229,14 +226,15 @@
             <div class="form-group">
               <label for="new-password">Yeni Şifre</label>
 
-              <input
+              <PasswordField
                 id="new-password"
                 v-model="passwordForm.password"
-                type="password"
                 autocomplete="new-password"
                 placeholder="En az 8 karakter"
-                :class="{ 'input-error': passwordErrors.password }"
+                :invalid="Boolean(passwordErrors.password)"
               />
+
+              <PasswordStrength :password="passwordForm.password" />
 
               <p
                 v-if="passwordErrors.password"
@@ -251,15 +249,12 @@
                 Yeni Şifre Tekrar
               </label>
 
-              <input
+              <PasswordField
                 id="password-confirmation"
                 v-model="passwordForm.password_confirmation"
-                type="password"
                 autocomplete="new-password"
                 placeholder="Yeni şifrenizi tekrar girin"
-                :class="{
-                  'input-error': passwordErrors.password_confirmation,
-                }"
+                :invalid="Boolean(passwordErrors.password_confirmation)"
               />
 
               <p
@@ -387,6 +382,8 @@ import {
   ref,
   watch,
 } from 'vue'
+import PasswordField from '../components/PasswordField.vue'
+import PasswordStrength from '../components/PasswordStrength.vue'
 import api from '../services/api'
 
 const isLoading = ref(true)
