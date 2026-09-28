@@ -19,11 +19,11 @@
           <input id="password" v-model="password" type="password" placeholder="••••••••" />
         </div>
 
-        <button 
+        <button
           type="submit"
           class="login-button"
-          :disabled="isLoading"
-        > 
+          :disabled="isLoading || isRateLimited"
+        >
           {{ isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap' }}
         </button>
         <p v-if="errorMessage" class="error-message">
@@ -40,7 +40,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
@@ -48,11 +48,49 @@ const email = ref('')
 const password = ref('')
 const errorMessage = ref('')
 const isLoading = ref(false)
+const retryAfterSeconds = ref(0)
+
+const isRateLimited = computed(() => retryAfterSeconds.value > 0)
+
+let rateLimitTimer = null
 
 const router = useRouter()
 const authStore = useAuthStore()
 
+const clearRateLimitTimer = () => {
+  if (rateLimitTimer !== null) {
+    clearInterval(rateLimitTimer)
+    rateLimitTimer = null
+  }
+}
+
+const loginRateLimitMessage = (seconds) =>
+  `Çok fazla giriş denemesi yaptınız. Lütfen ${seconds} saniye sonra tekrar deneyin.`
+
+const startRateLimitCountdown = (seconds) => {
+  clearRateLimitTimer()
+  retryAfterSeconds.value = seconds
+  errorMessage.value = loginRateLimitMessage(seconds)
+
+  rateLimitTimer = setInterval(() => {
+    retryAfterSeconds.value -= 1
+
+    if (retryAfterSeconds.value <= 0) {
+      retryAfterSeconds.value = 0
+      errorMessage.value = ''
+      clearRateLimitTimer()
+      return
+    }
+
+    errorMessage.value = loginRateLimitMessage(retryAfterSeconds.value)
+  }, 1000)
+}
+
 const login = async () => {
+  if (isRateLimited.value) {
+    return
+  }
+
   errorMessage.value = ''
   isLoading.value = true
 
@@ -64,12 +102,31 @@ const login = async () => {
 
     router.push(authStore.getHomeRoute())
   } catch (error) {
+    if (error.response?.status === 429) {
+      const retryAfter = Number(error.response.headers?.['retry-after'])
+
+      if (Number.isFinite(retryAfter) && retryAfter > 0) {
+        startRateLimitCountdown(Math.ceil(retryAfter))
+      } else {
+        clearRateLimitTimer()
+        retryAfterSeconds.value = 0
+        errorMessage.value =
+          'Çok fazla giriş denemesi yaptınız. Lütfen kısa bir süre bekleyip tekrar deneyin.'
+      }
+
+      return
+    }
+
     errorMessage.value =
       error.response?.data?.message || 'Giriş yapılırken bir hata oluştu.'
   } finally {
     isLoading.value = false
   }
 }
+
+onUnmounted(() => {
+  clearRateLimitTimer()
+})
 </script>
 
 <style scoped>
@@ -157,12 +214,17 @@ const login = async () => {
   transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-.login-button:hover {
+.login-button:hover:not(:disabled) {
   background-color: #3b5de7;
 }
 
-.login-button:active {
+.login-button:active:not(:disabled) {
   transform: scale(0.98);
+}
+
+.login-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .register-link {

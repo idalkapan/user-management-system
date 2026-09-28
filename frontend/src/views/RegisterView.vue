@@ -87,7 +87,7 @@
         <button
           type="submit"
           class="register-button"
-          :disabled="isLoading"
+          :disabled="isLoading || isRateLimited"
         >
           {{ isLoading ? 'Hesap oluşturuluyor...' : 'Kayıt Ol' }}
         </button>
@@ -102,7 +102,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../services/api'
 
@@ -113,9 +113,43 @@ const passwordConfirmation = ref('')
 
 const isLoading = ref(false)
 const errorMessage = ref('')
+const retryAfterSeconds = ref(0)
 const fieldErrors = reactive({})
 
+const isRateLimited = computed(() => retryAfterSeconds.value > 0)
+
+let rateLimitTimer = null
+
 const router = useRouter()
+
+const clearRateLimitTimer = () => {
+  if (rateLimitTimer !== null) {
+    clearInterval(rateLimitTimer)
+    rateLimitTimer = null
+  }
+}
+
+const registerRateLimitMessage = (seconds) =>
+  `Çok fazla kayıt denemesi yaptınız. Lütfen ${seconds} saniye sonra tekrar deneyin.`
+
+const startRateLimitCountdown = (seconds) => {
+  clearRateLimitTimer()
+  retryAfterSeconds.value = seconds
+  errorMessage.value = registerRateLimitMessage(seconds)
+
+  rateLimitTimer = setInterval(() => {
+    retryAfterSeconds.value -= 1
+
+    if (retryAfterSeconds.value <= 0) {
+      retryAfterSeconds.value = 0
+      errorMessage.value = ''
+      clearRateLimitTimer()
+      return
+    }
+
+    errorMessage.value = registerRateLimitMessage(retryAfterSeconds.value)
+  }, 1000)
+}
 
 const clearErrors = () => {
   errorMessage.value = ''
@@ -126,6 +160,10 @@ const clearErrors = () => {
 }
 
 const register = async () => {
+  if (isRateLimited.value) {
+    return
+  }
+
   clearErrors()
   isLoading.value = true
 
@@ -139,6 +177,21 @@ const register = async () => {
 
     router.push('/login')
   } catch (error) {
+    if (error.response?.status === 429) {
+      const retryAfter = Number(error.response.headers?.['retry-after'])
+
+      if (Number.isFinite(retryAfter) && retryAfter > 0) {
+        startRateLimitCountdown(Math.ceil(retryAfter))
+      } else {
+        clearRateLimitTimer()
+        retryAfterSeconds.value = 0
+        errorMessage.value =
+          'Çok fazla kayıt denemesi yaptınız. Lütfen kısa bir süre bekleyip tekrar deneyin.'
+      }
+
+      return
+    }
+
     if (error.response?.status === 422) {
       Object.assign(
         fieldErrors,
@@ -153,6 +206,10 @@ const register = async () => {
     isLoading.value = false
   }
 }
+
+onUnmounted(() => {
+  clearRateLimitTimer()
+})
 </script>
 
 <style scoped>

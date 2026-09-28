@@ -23,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        config([
+            'cors.exposed_headers' => ['Retry-After'],
+        ]);
+
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by(
                 $request->user()?->id ?: $request->ip()
