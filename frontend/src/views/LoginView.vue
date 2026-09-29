@@ -3,6 +3,10 @@
     <div class="login-card">
       <h1 class="login-title">Giriş Yap</h1>
 
+      <p v-if="successMessage" class="success-message">
+        {{ successMessage }}
+      </p>
+
       <form class="login-form" @submit.prevent="login">
         <div class="form-group">
           <label for="email">E-posta</label>
@@ -24,10 +28,16 @@
           />
         </div>
 
-        <label class="remember-me">
-          <input v-model="rememberMe" type="checkbox" />
-          <span>Beni hatırla</span>
-        </label>
+        <div class="login-options">
+          <label class="remember-me">
+            <input v-model="rememberMe" type="checkbox" />
+            <span>Beni hatırla</span>
+          </label>
+
+          <p class="forgot-link">
+            <router-link to="/forgot-password">Şifremi Unuttum?</router-link>
+          </p>
+        </div>
 
         <button
           type="submit"
@@ -59,9 +69,16 @@ const email = ref('')
 const password = ref('')
 const rememberMe = ref(false)
 const errorMessage = ref('')
+const successMessage = ref('')
 const isLoading = ref(false)
 
-if (sessionStorage.getItem('sessionExpired') === '1') {
+const passwordResetMessage = sessionStorage.getItem('passwordResetMessage')
+
+if (passwordResetMessage) {
+  successMessage.value = passwordResetMessage
+  sessionStorage.removeItem('passwordResetMessage')
+  sessionStorage.removeItem('sessionExpired')
+} else if (sessionStorage.getItem('sessionExpired') === '1') {
   errorMessage.value = 'Oturumunuz sona erdi. Lütfen tekrar giriş yapın.'
   sessionStorage.removeItem('sessionExpired')
 }
@@ -109,6 +126,7 @@ const login = async () => {
   }
 
   errorMessage.value = ''
+  successMessage.value = ''
   isLoading.value = true
 
   try {
@@ -216,6 +234,43 @@ onUnmounted(() => {
   border-color: #4f6ef7;
   box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.15);
   background-color: #ffffff;
+}
+
+.login-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+}
+
+.forgot-link {
+  margin: 0 0 0 auto;
+  text-align: right;
+  font-size: 0.875rem;
+}
+
+.forgot-link a {
+  color: #4f6ef7;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.forgot-link a:hover {
+  color: #3b5de7;
+  text-decoration: underline;
+}
+
+.success-message {
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #276749;
+  background-color: #f0fff4;
+  border: 1px solid #9ae6b4;
+  border-radius: 8px;
 }
 
 .remember-me {

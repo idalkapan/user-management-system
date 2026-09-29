@@ -5,6 +5,8 @@ import AppLayout from '../layouts/AppLayout.vue'
 
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
+import ForgotPasswordView from '../views/ForgotPasswordView.vue'
+import ResetPasswordView from '../views/ResetPasswordView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import PostListView from '../views/PostListView.vue'
@@ -32,6 +34,15 @@ const router = createRouter({
       path: '/register',
       component: RegisterView,
       meta: { guestOnly: true },
+    },
+    {
+      path: '/forgot-password',
+      component: ForgotPasswordView,
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/reset-password',
+      component: ResetPasswordView,
     },
     {
       path: '/',
@@ -136,8 +147,14 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
+  const isRecoveryRoute =
+    to.path === '/forgot-password' || to.path === '/reset-password'
 
-  if (authStore.isAuthenticated && !authStore.sessionValidated) {
+  if (
+    authStore.isAuthenticated &&
+    !authStore.sessionValidated &&
+    !isRecoveryRoute
+  ) {
     try {
       await authStore.fetchUser()
       authStore.sessionValidated = true

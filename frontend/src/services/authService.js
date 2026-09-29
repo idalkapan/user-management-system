@@ -12,8 +12,18 @@ const getProfile = () => {
   return api.get('/profile')
 }
 
+const forgotPassword = (payload) => {
+  return api.post('/forgot-password', payload)
+}
+
+const resetPassword = (payload) => {
+  return api.post('/reset-password', payload)
+}
+
 export default {
   login,
   logout,
   getProfile,
+  forgotPassword,
+  resetPassword,
 }

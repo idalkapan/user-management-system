@@ -8,7 +8,10 @@ const api = axios.create({
 })
 
 const isCredentialRequest = (url = '') =>
-  url.includes('/login') || url.includes('/register')
+  url.includes('/login') ||
+  url.includes('/register') ||
+  url.includes('/forgot-password') ||
+  url.includes('/reset-password')
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
