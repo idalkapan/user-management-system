@@ -90,7 +90,7 @@ Backend Laravel REST API, frontend Vue tek sayfa uygulamasıdır. İstekler `Aut
 ### 1. Projeyi alın
 
 ```bash
-git clone <repo-adresi>
+git clone https://github.com/idalkapan/user-management-system.git
 cd user-management-system
 ```
 
@@ -134,7 +134,6 @@ php artisan serve
 php artisan db:seed
 ```
 
-Giriş bilgisi bu dosyada yer almaz. `AdminSeeder` kaynağına bakın.
 
 API adresi: `http://localhost:8000/api`
 
